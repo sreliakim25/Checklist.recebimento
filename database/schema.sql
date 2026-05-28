@@ -40,6 +40,15 @@ CREATE TABLE IF NOT EXISTS fotos (
     capturado_em    TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS config (
+    chave   TEXT PRIMARY KEY,
+    valor   TEXT
+);
+
+INSERT OR IGNORE INTO config (chave, valor) VALUES ('nome_obra',   'Recanto das Oliveiras');
+INSERT OR IGNORE INTO config (chave, valor) VALUES ('numero_obra', '38');
+INSERT OR IGNORE INTO config (chave, valor) VALUES ('construtora', 'Viana & Moura Construções');
+
 CREATE INDEX IF NOT EXISTS idx_checklists_tipo ON checklists(tipo);
 CREATE INDEX IF NOT EXISTS idx_checklists_quadra_lote ON checklists(quadra, lote);
 CREATE INDEX IF NOT EXISTS idx_checklists_rua ON checklists(rua);

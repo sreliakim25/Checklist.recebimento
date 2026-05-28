@@ -1,42 +1,58 @@
-const EQUIPAMENTOS = [
-  { tipo: 'guarita',  label: 'GUARITA',        equipamento: 'guarita',        cx: 680, cy: 80  },
-  { tipo: 'quiosque', label: 'QUIOSQUES',       equipamento: 'quiosque',       cx: 400, cy: 550 },
-  { tipo: 'salao',    label: 'SALÃO DE FESTAS', equipamento: 'salao-festas',   cx: 400, cy: 480 },
-  { tipo: 'deck',     label: 'DECK PISCINAS',   equipamento: 'deck-piscina',   cx: 350, cy: 520 },
-  { tipo: 'dep_lixo', label: 'DEP. LIXO',       equipamento: 'deposito-lixo',  cx: 650, cy: 200 },
+// Mapeamento: texto no SVG → dados do equipamento
+// relativeTo: posiciona o círculo com offset em relação ao marcador de outro tipo
+const EQUIP_TEXTOS = {
+  'GUARITA':         { tipo: 'guarita',  label: 'GUARITA',        equipamento: 'guarita'       },
+  'DEP. LIXO':       { tipo: 'dep_lixo', label: 'DEP. LIXO',       equipamento: 'deposito-lixo', relativeTo: 'guarita', offsetX: 26, offsetY: 0 },
+  'SALÃO DE FESTAS': { tipo: 'salao',    label: 'SALÃO DE FESTAS', equipamento: 'salao-festas'  },
+  'DECK PISCINAS':   { tipo: 'deck',     label: 'DECK PISCINAS',   equipamento: 'deck-piscina'  },
+  'QUIOSQUES':       { tipo: 'quiosque', label: 'QUIOSQUES',       equipamento: 'quiosque'      },
+};
+
+// Mapeamento quadra → label para interface
+const QUADRAS_LABEL = {
+  'A':'A','B':'B','C':'C','D':'D','E':'E','F':'F','G':'G','H':'H',
+  'I':'I','J':'J','K':'K','L':'L','M':'M','N':'N','O':'O','P':'P',
+  'Q':'Q','R':'R','S':'S','T':'T'
+};
+
+// Tipos de checklist disponíveis por rua (label exibido + tipo interno)
+const TIPOS_RUA = [
+  { tipo: 'pavimentacao', label: 'Pavimentação', icone: '🛤' },
+  { tipo: 'passeio',      label: 'Passeio',      icone: '🚶' },
+  { tipo: 'saa',          label: 'Água (SAA)',   icone: '💧' },
+  { tipo: 'drenagem',     label: 'Drenagem',     icone: '🌊' },
+  { tipo: 'ses',          label: 'Esgoto (SES)', icone: '⬇' },
 ];
 
 let SVG_EL = null;
+const loteMap = {};  // svgId → { nr, quadra }
 
 document.addEventListener('DOMContentLoaded', async function () {
   if (!SVG_DISPONIVEL) return;
-
   SVG_EL = await carregarSVG();
   if (!SVG_EL) return;
 
   processarCamadasSVG(SVG_EL);
+  construirMapaLotes(SVG_EL);
   await carregarStatus();
   adicionarMarcadoresEquipamentos(SVG_EL);
+  construirMapaRuas(SVG_EL);  // rua markers ficam por cima de tudo
   registrarEventosMapa();
   registrarFechaPanel();
 });
 
-// ── Carrega o SVG via fetch + DOMParser (preserva namespaces corretamente) ──
+// ── Carrega o SVG via fetch + DOMParser ──
 async function carregarSVG() {
   const container = document.getElementById('svg-container');
   try {
     const resp = await fetch('/static/svg/Rec_Oliveiras_1.svg');
     if (!resp.ok) throw new Error('SVG não encontrado');
     const texto = await resp.text();
-
     const parser = new DOMParser();
     const doc = parser.parseFromString(texto, 'image/svg+xml');
     const svgEl = doc.documentElement;
-
-    // Verificar erros de parse
     if (svgEl.tagName === 'parsererror') throw new Error('SVG inválido');
 
-    // Ajustar dimensões para responsividade
     const w = parseFloat(svgEl.getAttribute('width'));
     const h = parseFloat(svgEl.getAttribute('height'));
     if (w && h && !svgEl.getAttribute('viewBox')) {
@@ -48,7 +64,6 @@ async function carregarSVG() {
     svgEl.style.height = '100%';
     svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     svgEl.id = 'svg-principal';
-
     container.innerHTML = '';
     container.appendChild(svgEl);
     return svgEl;
@@ -75,6 +90,166 @@ function processarCamadasSVG(svgEl) {
   });
 }
 
+// ── Constrói mapeamento SVG-id → { nr, quadra } usando posição espacial ──
+function construirMapaLotes(svgEl) {
+  // Coleta labels de lotes (g2055): cada element tem id e texto com nr do lote
+  const loteLayer  = svgEl.getElementById('g3065');
+  const labelLayer = svgEl.getElementById('g2055');
+  const quadraLayer = svgEl.getElementById('g13051');
+  if (!loteLayer || !labelLayer) return;
+
+  // Monta array de labels { nr, cx, cy }
+  const labels = [];
+  Array.from(labelLayer.children).forEach(el => {
+    const txt = el.textContent.trim();
+    const nr = parseInt(txt, 10);
+    if (isNaN(nr)) return;
+    try {
+      const bb = el.getBBox();
+      labels.push({ nr: String(nr), cx: bb.x + bb.width / 2, cy: bb.y + bb.height / 2 });
+    } catch (_) {}
+  });
+
+  // Monta array de quadras { quadra, cx, cy }
+  const quadras = [];
+  if (quadraLayer) {
+    Array.from(quadraLayer.children).forEach(el => {
+      const txt = el.textContent.trim();
+      if (!txt) return;
+      try {
+        const bb = el.getBBox();
+        quadras.push({ quadra: txt, cx: bb.x + bb.width / 2, cy: bb.y + bb.height / 2 });
+      } catch (_) {}
+    });
+  }
+
+  function nearest(arr, cx, cy) {
+    let best = null, bestDist = Infinity;
+    arr.forEach(item => {
+      const d = (item.cx - cx) ** 2 + (item.cy - cy) ** 2;
+      if (d < bestDist) { bestDist = d; best = item; }
+    });
+    return best;
+  }
+
+  // Para cada path de lote, encontra o label e quadra mais próximos
+  Array.from(loteLayer.children).forEach(el => {
+    try {
+      const bb = el.getBBox();
+      const cx = bb.x + bb.width / 2;
+      const cy = bb.y + bb.height / 2;
+      const lbl = nearest(labels, cx, cy);
+      const qdr = nearest(quadras, cx, cy);
+      if (lbl) {
+        el.setAttribute('data-lote', lbl.nr);
+        loteMap[el.id] = { nr: lbl.nr, quadra: qdr ? qdr.quadra : '' };
+      }
+      if (qdr) el.setAttribute('data-quadra', qdr.quadra);
+    } catch (_) {}
+  });
+}
+
+// Posições visuais das ruas (pré-calculadas com a matemática de rotação dos transforms do SVG)
+// Formato: [cx, cy] em coordenadas do SVG
+const RUA_POSICOES = {
+  'RUA N.º 01':              [374, 274],
+  'RUA N.º 02':              [603, 234],
+  'RUA N.º 03':              [290, 511],
+  'RUA N.º 04':              [677, 108],
+  'RUA N.º 05':              [483, 252],
+  'RUA N.º 06':              [244, 421],
+  'RUA N.º 07':              [ 26, 597],
+  'BV N.º 01':               [572, 195],
+  'BV N.º 02':               [715, 161],
+  'BV N.º 03':               [358, 347],
+  'BV N.º 04':               [383, 383],
+  'BV N.º 05':               [539, 341],
+  'BV N.º 06':               [131, 508],
+  'BV N.º 07':               [151, 548],
+  'BV N.º 08':               [576, 184],
+  'BV N.º 09':               [373, 352],
+  'BV N.º 10':               [149, 508],
+  'AVENIDA JOSIVALDO BARRETO':[732,  19],
+};
+
+// ── Constrói mapeamento rua → paths E adiciona marcadores clicáveis ──
+function construirMapaRuas(svgEl) {
+  // 1. Atribui data-rua às paths de pavimento por proximidade às posições conhecidas
+  const labels = Object.entries(RUA_POSICOES).map(([rua, [cx, cy]]) => ({ rua, cx, cy }));
+
+  function nearest(cx, cy) {
+    let best = null, bestD = Infinity;
+    labels.forEach(l => {
+      const d = (l.cx - cx) ** 2 + (l.cy - cy) ** 2;
+      if (d < bestD) { bestD = d; best = l; }
+    });
+    return best;
+  }
+
+  ['g7237', 'g4477'].forEach(layerId => {
+    const layer = svgEl.getElementById(layerId);
+    if (!layer) return;
+    Array.from(layer.children).forEach(el => {
+      try {
+        const bb = el.getBBox();
+        if (!bb || (bb.width === 0 && bb.height === 0)) return;
+        const cx = bb.x + bb.width / 2;
+        const cy = bb.y + bb.height / 2;
+        const lbl = nearest(cx, cy);
+        if (lbl) el.setAttribute('data-rua', lbl.rua);
+      } catch (_) {}
+    });
+  });
+
+  // 2. Cria marcadores visíveis e clicáveis para cada rua
+  adicionarMarcadoresRuas(svgEl, labels);
+}
+
+// ── Marcadores clicáveis de rua (pílulas com nome) ──
+function adicionarMarcadoresRuas(svgEl, labels) {
+  labels.forEach(({ rua, cx, cy }) => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'clicavel rua marcador-rua');
+    g.setAttribute('data-tipo', 'rua');
+    g.setAttribute('data-rua', rua);
+    g.style.cursor = 'pointer';
+
+    const isBv = rua.startsWith('BV');
+    const fillColor = isBv ? '#1B5E5A' : '#1B3C6B';
+    const labelCurto = rua.replace('N.º ', '').replace('AVENIDA JOSIVALDO BARRETO', 'AVENIDA');
+
+    // Pílula de fundo
+    const pill = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const pw = labelCurto.length * 4.5 + 10;
+    const ph = 12;
+    pill.setAttribute('x', cx - pw / 2);
+    pill.setAttribute('y', cy - ph / 2);
+    pill.setAttribute('width', pw);
+    pill.setAttribute('height', ph);
+    pill.setAttribute('rx', 6);
+    pill.setAttribute('fill', fillColor);
+    pill.setAttribute('fill-opacity', '0.85');
+    pill.setAttribute('stroke', '#fff');
+    pill.setAttribute('stroke-width', '1');
+
+    // Texto da pílula
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', cx);
+    txt.setAttribute('y', cy + 4);
+    txt.setAttribute('text-anchor', 'middle');
+    txt.setAttribute('font-size', '6');
+    txt.setAttribute('font-family', 'Helvetica, Arial, sans-serif');
+    txt.setAttribute('font-weight', 'bold');
+    txt.setAttribute('fill', '#fff');
+    txt.setAttribute('pointer-events', 'none');
+    txt.textContent = labelCurto;
+
+    g.appendChild(pill);
+    g.appendChild(txt);
+    svgEl.appendChild(g);
+  });
+}
+
 // ── Colorir mapa conforme status do banco ──
 async function carregarStatus() {
   try {
@@ -86,12 +261,10 @@ async function carregarStatus() {
         `[data-tipo="lote"][data-quadra="${item.quadra}"][data-lote="${item.lote}"]`
       ).forEach(el => el.setAttribute('data-resultado', item.resultado));
     });
-
     data.ruas.forEach(item => {
       document.querySelectorAll(`[data-rua="${item.rua}"]`)
         .forEach(el => el.setAttribute('data-resultado', item.resultado));
     });
-
     data.equipamentos.forEach(item => {
       document.querySelectorAll(`[data-tipo="${item.tipo}"]`)
         .forEach(el => el.setAttribute('data-resultado', item.resultado));
@@ -101,38 +274,74 @@ async function carregarStatus() {
   }
 }
 
-// ── Marcadores de equipamentos (círculos sobrepostos) ──
+// ── Marcadores de equipamentos posicionados pelos textos reais do SVG ──
 function adicionarMarcadoresEquipamentos(svgEl) {
-  EQUIPAMENTOS.forEach(eq => {
-    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-    g.setAttribute('class', 'clicavel equipamento');
-    g.setAttribute('data-tipo', eq.tipo);
-    g.setAttribute('data-equipamento', eq.equipamento);
-    g.style.cursor = 'pointer';
+  const textEls = Array.from(svgEl.querySelectorAll('text, tspan'));
 
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', eq.cx);
-    circle.setAttribute('cy', eq.cy);
-    circle.setAttribute('r', 14);
-    circle.setAttribute('fill', '#5C1A2E');
-    circle.setAttribute('fill-opacity', '0.85');
-    circle.setAttribute('stroke', '#fff');
-    circle.setAttribute('stroke-width', '2');
+  // Primeiro passo: posiciona todos que não dependem de outro marcador
+  // e guarda as posições para uso por relativeTo
+  const posicoes = {}; // tipo → { tx, ty }
 
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', eq.cx);
-    text.setAttribute('y', eq.cy - 20);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-size', '8');
-    text.setAttribute('font-family', 'Helvetica, Arial, sans-serif');
-    text.setAttribute('fill', '#1e293b');
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = eq.label;
+  // Ordem: primeiro independentes, depois dependentes
+  const independentes = Object.values(EQUIP_TEXTOS).filter(eq => !eq.relativeTo);
+  const dependentes   = Object.values(EQUIP_TEXTOS).filter(eq =>  eq.relativeTo);
 
-    g.appendChild(circle);
-    g.appendChild(text);
-    svgEl.appendChild(g);
+  // Mapeia chave de texto → eq para busca rápida
+  const textoParaEq = {};
+  Object.entries(EQUIP_TEXTOS).forEach(([k, v]) => { textoParaEq[k] = v; });
+
+  independentes.forEach(eq => {
+    const chave = Object.keys(textoParaEq).find(k => textoParaEq[k] === eq);
+    const textEl = textEls.find(el => el.textContent.trim() === chave);
+    if (!textEl) return;
+    let bbox;
+    try { bbox = textEl.getBBox(); } catch (_) { return; }
+    const tx = bbox.x + bbox.width / 2;
+    const ty = bbox.y + bbox.height / 2;
+    posicoes[eq.tipo] = { tx, ty };
+    _criarMarcador(svgEl, eq, tx, ty);
   });
+
+  dependentes.forEach(eq => {
+    const ref = posicoes[eq.relativeTo];
+    if (!ref) return;
+    const tx = ref.tx + (eq.offsetX || 0);
+    const ty = ref.ty + (eq.offsetY || 0);
+    posicoes[eq.tipo] = { tx, ty };
+    _criarMarcador(svgEl, eq, tx, ty);
+  });
+}
+
+function _criarMarcador(svgEl, eq, tx, ty) {
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'clicavel equipamento');
+  g.setAttribute('data-tipo', eq.tipo);
+  g.setAttribute('data-equipamento', eq.equipamento);
+  g.style.cursor = 'pointer';
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', tx);
+  circle.setAttribute('cy', ty);
+  circle.setAttribute('r', 12);
+  circle.setAttribute('fill', '#5C1A2E');
+  circle.setAttribute('fill-opacity', '0.88');
+  circle.setAttribute('stroke', '#fff');
+  circle.setAttribute('stroke-width', '2');
+
+  const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  label.setAttribute('x', tx);
+  label.setAttribute('y', ty - 15);
+  label.setAttribute('text-anchor', 'middle');
+  label.setAttribute('font-size', '7');
+  label.setAttribute('font-family', 'Helvetica, Arial, sans-serif');
+  label.setAttribute('fill', '#1e293b');
+  label.setAttribute('font-weight', 'bold');
+  label.setAttribute('pointer-events', 'none');
+  label.textContent = eq.label;
+
+  g.appendChild(circle);
+  g.appendChild(label);
+  svgEl.appendChild(g);
 }
 
 // ── Eventos de clique no mapa ──
@@ -146,39 +355,197 @@ function registrarEventosMapa() {
       .forEach(x => x.classList.remove('selecionado'));
     el.classList.add('selecionado');
 
-    const params = new URLSearchParams();
     const tipo = el.getAttribute('data-tipo');
 
     if (tipo === 'lote') {
-      params.set('tipo', 'lote');
-      const q = el.getAttribute('data-quadra');
-      const l = el.getAttribute('data-lote');
-      if (q) params.set('quadra', q);
-      if (l) params.set('lote', l);
-    } else if (tipo === 'rua') {
-      params.set('tipo', 'pavimentacao');
-      const r = el.getAttribute('data-rua');
-      if (r) params.set('rua', r);
-    } else if (tipo === 'passeio') {
-      params.set('tipo', 'passeio');
-      const r = el.getAttribute('data-rua');
-      if (r) params.set('rua', r);
+      await abrirPainelLote(el);
+    } else if (tipo === 'rua' || tipo === 'passeio') {
+      await abrirPainelRua(el);
     } else {
-      // equipamento
-      params.set('tipo', tipo);
-      const eq = el.getAttribute('data-equipamento') || el.closest('[data-equipamento]')?.getAttribute('data-equipamento');
-      if (eq) params.set('equipamento', eq);
-    }
-
-    const resp = await fetch('/api/mapa/status?' + params.toString());
-    const data = await resp.json();
-
-    if (data.checklists && data.checklists.length > 0) {
-      mostrarPainelExistentes(data.checklists, params, el);
-    } else {
-      mostrarPainelVazio(params, el);
+      await abrirPainelGenerico(el, tipo);
     }
   });
+}
+
+// ── Painel específico para lotes ──
+async function abrirPainelLote(el) {
+  const quadra = el.getAttribute('data-quadra') || '';
+  const lote   = el.getAttribute('data-lote')   || '';
+  const painel = document.getElementById('painel-conteudo');
+
+  // Cabeçalho sempre visível com identificação
+  const temId = quadra || lote;
+  const titulo = temId
+    ? `Lote ${lote}${quadra ? ' — Quadra ' + quadra : ''}`
+    : 'Lote (identificação pendente)';
+
+  painel.innerHTML = `
+    <h3 class="painel-titulo-lote">${titulo}</h3>
+    <div class="lote-acoes">
+      <a href="/checklist/novo?tipo=lote${quadra ? '&quadra='+quadra : ''}${lote ? '&lote='+lote : ''}"
+         class="btn-acao btn-acao-novo">
+        <span class="acao-icone">＋</span>
+        <span>Novo Checklist</span>
+      </a>
+      <button class="btn-acao btn-acao-ver" id="btn-ver-checklists">
+        <span class="acao-icone">📋</span>
+        <span>Ver Checklists</span>
+      </button>
+    </div>
+    <div id="lote-status-area">
+      <div class="lote-carregando">Carregando…</div>
+    </div>`;
+
+  document.getElementById('painel-lateral').classList.add('aberto');
+
+  // Busca checklists do lote
+  const params = new URLSearchParams({ tipo: 'lote' });
+  if (quadra) params.set('quadra', quadra);
+  if (lote)   params.set('lote', lote);
+
+  let checklists = [];
+  try {
+    const resp = await fetch('/api/mapa/status?' + params);
+    const data = await resp.json();
+    checklists = data.checklists || [];
+  } catch (_) {}
+
+  // Renderiza status do lote
+  const statusArea = document.getElementById('lote-status-area');
+  if (checklists.length === 0) {
+    statusArea.innerHTML = `<p class="sem-checklist">Nenhum checklist registrado para este lote.</p>`;
+  } else {
+    // Badge de status consolidado
+    const ultimo = checklists[0];
+    statusArea.innerHTML = `
+      <div class="lote-status-badge">
+        ${badgeHtml(ultimo.resultado)}
+        <span class="status-data">${ultimo.data_vistoria || '—'}</span>
+      </div>
+      <div id="lista-checklists-lote" style="display:none">
+        ${checklists.map(c => itemChecklistHtml(c)).join('')}
+      </div>`;
+  }
+
+  // Toggle "Ver checklists"
+  const btnVer = document.getElementById('btn-ver-checklists');
+  if (btnVer) {
+    const listaEl = document.getElementById('lista-checklists-lote');
+    btnVer.addEventListener('click', () => {
+      if (!listaEl) return;
+      const aberto = listaEl.style.display !== 'none';
+      listaEl.style.display = aberto ? 'none' : 'block';
+      btnVer.querySelector('span:last-child').textContent = aberto ? 'Ver Checklists' : 'Ocultar';
+    });
+  }
+}
+
+// ── Painel de rua — múltiplos tipos de checklist ──
+async function abrirPainelRua(el) {
+  const rua = el.getAttribute('data-rua') || el.closest('[data-rua]')?.getAttribute('data-rua') || '';
+  const isBv = rua.startsWith('BV');
+  const painel = document.getElementById('painel-conteudo');
+
+  // Tipos aplicáveis: BV tem passeio; ruas normais têm pavimentação, SAA, drenagem, SES
+  const tiposAplicaveis = isBv
+    ? TIPOS_RUA.filter(t => ['pavimentacao','passeio','saa','drenagem','ses'].includes(t.tipo))
+    : TIPOS_RUA;
+
+  painel.innerHTML = `
+    <h3 class="painel-titulo-lote">${rua || 'Rua'}</h3>
+    <p class="rua-subtitulo">Novo checklist para esta rua:</p>
+    <div class="rua-tipos-grid">
+      ${tiposAplicaveis.map(t => `
+        <a href="/checklist/novo?tipo=${t.tipo}${rua ? '&rua=' + encodeURIComponent(rua) : ''}"
+           class="btn-tipo-rua">
+          <span class="tipo-icone">${t.icone}</span>
+          <span>${t.label}</span>
+        </a>`).join('')}
+    </div>
+    <div id="rua-checklists-area">
+      <div class="lote-carregando">Carregando checklists…</div>
+    </div>`;
+
+  document.getElementById('painel-lateral').classList.add('aberto');
+
+  // Busca todos os checklists desta rua (todos os tipos)
+  if (!rua) {
+    document.getElementById('rua-checklists-area').innerHTML =
+      '<p class="sem-checklist">Rua não identificada.</p>';
+    return;
+  }
+
+  let todos = [];
+  try {
+    const resp = await fetch('/api/mapa/status?' + new URLSearchParams({ rua }));
+    todos = (await resp.json()).checklists || [];
+  } catch (_) {}
+
+  const area = document.getElementById('rua-checklists-area');
+  if (todos.length === 0) {
+    area.innerHTML = '<p class="sem-checklist">Nenhum checklist registrado para esta rua.</p>';
+    return;
+  }
+
+  // Agrupa por tipo
+  const grupos = {};
+  todos.forEach(c => {
+    if (!grupos[c.tipo]) grupos[c.tipo] = [];
+    grupos[c.tipo].push(c);
+  });
+
+  const tipoLabel = { pavimentacao:'Pavimentação', passeio:'Passeio', saa:'SAA',
+                      drenagem:'Drenagem', ses:'SES' };
+  let html = '<div class="rua-grupos">';
+  Object.entries(grupos).forEach(([tipo, lista]) => {
+    html += `<div class="rua-grupo">
+      <div class="rua-grupo-titulo">${tipoLabel[tipo] || tipo}</div>
+      ${lista.map(c => itemChecklistHtml(c)).join('')}
+    </div>`;
+  });
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+// ── Painel genérico (equipamento) ──
+async function abrirPainelGenerico(el, tipo) {
+  const eq = el.getAttribute('data-equipamento') || el.closest('[data-equipamento]')?.getAttribute('data-equipamento');
+  const params = new URLSearchParams({ tipo });
+  if (eq) params.set('equipamento', eq);
+
+  const resp = await fetch('/api/mapa/status?' + params);
+  const data = await resp.json();
+  const checklists = data.checklists || [];
+  const titulo = eq ? eq.replace(/-/g, ' ').toUpperCase() : tipo.toUpperCase();
+  const painel = document.getElementById('painel-conteudo');
+
+  let html = `<h3>${titulo}</h3>
+    <a href="/checklist/novo?${params}" class="btn-novo-checklist">+ Novo Checklist</a>`;
+
+  if (checklists.length > 0) {
+    html += '<ul class="lista-checklists">';
+    checklists.forEach(c => { html += `<li>${itemChecklistHtml(c)}</li>`; });
+    html += '</ul>';
+  } else {
+    html += `<p class="sem-checklist">Nenhum checklist registrado para este local.</p>`;
+  }
+
+  painel.innerHTML = html;
+  document.getElementById('painel-lateral').classList.add('aberto');
+}
+
+function itemChecklistHtml(c) {
+  return `<div class="checklist-lista-item">
+    <span class="data">${c.data_vistoria || 'sem data'}</span>
+    ${badgeHtml(c.resultado)}
+    <span class="resp">${c.responsavel_ude || ''}</span>
+    ${!c.finalizado ? '<span class="rascunho-tag">(rascunho)</span>' : ''}
+    <div class="acoes">
+      <a href="/checklist/${c.id}">👁 Ver</a>
+      <a href="/api/checklist/${c.id}/pdf" target="_blank">📥 PDF</a>
+      <a href="/checklist/${c.id}/editar">✏ Editar</a>
+    </div>
+  </div>`;
 }
 
 function registrarFechaPanel() {
@@ -189,60 +556,12 @@ function registrarFechaPanel() {
   });
 }
 
-function mostrarPainelExistentes(checklists, params, el) {
-  const painel = document.getElementById('painel-conteudo');
-  const titulo = obterTituloLocal(params, el);
-  let html = `<h3>${titulo}</h3>`;
-  html += `<a href="/checklist/novo?${params}" class="btn-novo-checklist">+ Novo Checklist</a>`;
-  html += '<ul class="lista-checklists">';
-  checklists.forEach(c => {
-    html += `<li><div class="checklist-lista-item">
-      <span class="data">${c.data_vistoria || 'sem data'}</span>
-      ${badgeHtml(c.resultado)}
-      <span class="resp">${c.responsavel_ude || ''}</span>
-      ${!c.finalizado ? '<span class="rascunho-tag">(rascunho)</span>' : ''}
-      <div class="acoes">
-        <a href="/checklist/${c.id}">👁 Ver</a>
-        <a href="/api/checklist/${c.id}/pdf" target="_blank">📥 PDF</a>
-        <a href="/checklist/${c.id}/editar">✏ Editar</a>
-      </div>
-    </div></li>`;
-  });
-  html += '</ul>';
-  painel.innerHTML = html;
-  document.getElementById('painel-lateral').classList.add('aberto');
-}
-
-function mostrarPainelVazio(params, el) {
-  const painel = document.getElementById('painel-conteudo');
-  const titulo = obterTituloLocal(params, el);
-  painel.innerHTML = `
-    <h3>${titulo}</h3>
-    <p class="sem-checklist">Nenhum checklist registrado para este local.</p>
-    <a href="/checklist/novo?${params}" class="btn-novo-checklist">+ Criar Checklist</a>`;
-  document.getElementById('painel-lateral').classList.add('aberto');
-}
-
 function badgeHtml(resultado) {
   const cores = {
-    'APROVADO': '#22c55e', 'APROVADO COM RESSALVAS': '#f59e0b',
-    'REPROVADO': '#ef4444', 'PENDENTE': '#94a3b8'
+    'APROVADO': '#22c55e',
+    'APROVADO COM RESSALVAS': '#f59e0b',
+    'REPROVADO': '#ef4444',
+    'PENDENTE': '#94a3b8'
   };
-  return `<span class="badge" style="background:${cores[resultado]||'#94a3b8'}">${resultado||'PENDENTE'}</span>`;
-}
-
-function obterTituloLocal(params, el) {
-  const quadra = params.get('quadra') || '';
-  const lote = params.get('lote') || '';
-  const rua = params.get('rua') || '';
-  const eq = params.get('equipamento') || '';
-  if (quadra && lote) return `Lote ${lote} — Quadra ${quadra}`;
-  if (rua) return rua;
-  if (eq) return eq.replace(/-/g, ' ').toUpperCase();
-  if (el) {
-    const g = el.closest('[data-equipamento]');
-    if (g) return g.getAttribute('data-equipamento').replace(/-/g, ' ').toUpperCase();
-  }
-  const tipo = params.get('tipo') || '';
-  return tipo.charAt(0).toUpperCase() + tipo.slice(1);
+  return `<span class="badge" style="background:${cores[resultado] || '#94a3b8'}">${resultado || 'PENDENTE'}</span>`;
 }

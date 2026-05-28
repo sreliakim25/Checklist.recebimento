@@ -6,7 +6,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle,
-    Paragraph, Spacer, Image, KeepTogether
+    Paragraph, Spacer, Image, KeepTogether, PageBreak
 )
 
 CORES = {
@@ -37,17 +37,22 @@ TITULOS = {
     'salao':        'Checklist de Recebimento — Salão de Festas',
 }
 
+STATUS_LABEL = {'C': 'Conforme', 'NC': 'Não Conforme', 'NA': 'N/A'}
+
 PAGE_W = A4[0]
 PAGE_H = A4[1]
 L_MARGIN = 1.5 * cm
 R_MARGIN = 1.5 * cm
 TABLE_W = PAGE_W - L_MARGIN - R_MARGIN
 
+THUMB_W = 5.2 * cm
+THUMB_H = 4.0 * cm
+THUMB_COLS = 3        # miniaturas por linha no inline
+ANNEX_IMG_W = 8.0 * cm
+ANNEX_IMG_H = 6.2 * cm
+
 
 def _estilos(cor_h):
-    cor_hex = '#%02x%02x%02x' % (
-        int(cor_h.red * 255), int(cor_h.green * 255), int(cor_h.blue * 255)
-    ) if hasattr(cor_h, 'red') else str(cor_h)
     return {
         'titulo': ParagraphStyle('titulo', fontName='Helvetica-Bold', fontSize=13,
                                  textColor=colors.HexColor('#FFFFFF')),
@@ -63,14 +68,25 @@ def _estilos(cor_h):
         'value':  ParagraphStyle('value', fontName='Helvetica', fontSize=8),
         'leg':    ParagraphStyle('leg', fontName='Helvetica', fontSize=7.5,
                                  textColor=colors.HexColor('#444444')),
+        'caption': ParagraphStyle('caption', fontName='Helvetica', fontSize=6.5,
+                                  textColor=colors.HexColor('#555555'), leading=8,
+                                  alignment=1),
+        'annex_nr': ParagraphStyle('annex_nr', fontName='Helvetica-Bold', fontSize=9,
+                                   textColor=colors.HexColor('#1F2937'), leading=11),
+        'annex_desc': ParagraphStyle('annex_desc', fontName='Helvetica', fontSize=8,
+                                     textColor=colors.HexColor('#374151'), leading=10),
+        'annex_obs': ParagraphStyle('annex_obs', fontName='Helvetica-Oblique', fontSize=7.5,
+                                    textColor=colors.HexColor('#555555'), leading=9),
     }
 
 
-def _bloco_cabecalho(c, estilos, cor_h, cor_s):
+def _bloco_cabecalho(c, estilos, cor_h, cor_s, config):
     tipo = c.get('tipo', '')
     titulo = TITULOS.get(tipo, 'Checklist de Recebimento')
+    nome_obra = config.get('nome_obra', 'Empreendimento')
+    num_obra = config.get('numero_obra', '—')
+    construtora = config.get('construtora', '')
 
-    # Linha localizador
     localizador = ''
     if c.get('quadra') and c.get('lote'):
         localizador = f"Quadra: {c['quadra']}  |  Lote: {c['lote']}"
@@ -85,8 +101,9 @@ def _bloco_cabecalho(c, estilos, cor_h, cor_s):
     resp = c.get('responsavel_ude', '') or ''
     empresa = c.get('empresa_executora', '') or ''
 
+    cabecalho_txt = f"Obra {num_obra} — {nome_obra} | UDE — {construtora}"
     hdr_data = [
-        [Paragraph('Obra 38 — Recanto das Oliveiras | UDE — Viana & Moura Construções', estilos['sub']),
+        [Paragraph(cabecalho_txt, estilos['sub']),
          Paragraph(titulo, estilos['titulo'])],
     ]
     hdr_tbl = Table(hdr_data, colWidths=[TABLE_W * 0.35, TABLE_W * 0.65])
@@ -99,7 +116,6 @@ def _bloco_cabecalho(c, estilos, cor_h, cor_s):
         ('LEFTPADDING', (1, 0), (1, -1), 6),
     ]))
 
-    # Identificação
     id_rows = [
         ['Data de Vistoria:', data_str, 'Responsável UDE:', resp],
         ['Empresa Executora:', empresa, 'Localizador:', localizador],
@@ -135,6 +151,52 @@ def _legenda(estilos):
     return tbl
 
 
+def _miniaturas_inline(fts):
+    """Linha(s) de miniaturas (5cm) com caption, até THUMB_COLS por linha."""
+    imgs_validas = []
+    for f in fts:
+        caminho_abs = os.path.join('fotos', f['caminho'])
+        if os.path.exists(caminho_abs):
+            imgs_validas.append((caminho_abs, f))
+
+    if not imgs_validas:
+        return []
+
+    col_w = THUMB_W + 0.3 * cm
+    linhas = []
+    for inicio in range(0, len(imgs_validas), THUMB_COLS):
+        grupo = imgs_validas[inicio:inicio + THUMB_COLS]
+        img_row = []
+        cap_row = []
+        for caminho, f in grupo:
+            img_row.append(Image(caminho, width=THUMB_W, height=THUMB_H))
+            # caption com número sequencial baseado no nome do arquivo
+            nome = os.path.basename(f['caminho'])
+            cap_row.append(Paragraph(nome[:28], _estilos(None)['caption']))
+
+        pad = THUMB_COLS - len(grupo)
+        img_row += [''] * pad
+        cap_row += [''] * pad
+
+        tbl = Table(
+            [img_row, cap_row],
+            colWidths=[col_w] * THUMB_COLS,
+        )
+        tbl.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 2),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ('LEFTPADDING', (0, 0), (-1, -1), 2),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F9FAFB')),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+        ]))
+        linhas.append(tbl)
+
+    return linhas
+
+
 def _secao(nome, itens, fotos_por_item, estilos, cor_h, cor_s):
     elementos = []
     p = Paragraph(nome.upper(), estilos['sec'])
@@ -149,7 +211,6 @@ def _secao(nome, itens, fotos_por_item, estilos, cor_h, cor_s):
 
     colunas = ['Nº', 'Descrição do Item', 'C', 'NC', 'N/A', 'Observação']
     widths = [1.0 * cm, 9.5 * cm, 1.0 * cm, 1.0 * cm, 1.0 * cm, 4.8 * cm]
-    # Ajuste para TABLE_W
     widths[1] = TABLE_W - sum(widths) + widths[1]
 
     hdr = Table([colunas], colWidths=widths)
@@ -196,17 +257,95 @@ def _secao(nome, itens, fotos_por_item, estilos, cor_h, cor_s):
         block = [t]
 
         if item['id'] in fotos_por_item:
-            fts = fotos_por_item[item['id']]
-            imgs = []
-            for f in fts:
-                caminho_abs = os.path.join('fotos', f['caminho'])
-                if os.path.exists(caminho_abs):
-                    imgs.append(Image(caminho_abs, width=3 * cm, height=2.5 * cm))
-            if imgs:
-                foto_tbl = Table([imgs], colWidths=[3.2 * cm] * len(imgs))
-                block.append(foto_tbl)
+            block.extend(_miniaturas_inline(fotos_por_item[item['id']]))
 
         elementos.append(KeepTogether(block))
+
+    return elementos
+
+
+def _registro_fotografico(itens_ordenados, fotos_por_item, fotos_gerais, estilos, cor_h):
+    """Seção anexa: foto grande (8cm) + informações completas do item."""
+    # Coleta todas as fotos com contexto, mantendo a ordem dos itens
+    entradas = []
+    for item in itens_ordenados:
+        fts = fotos_por_item.get(item['id'], [])
+        for f in fts:
+            caminho_abs = os.path.join('fotos', f['caminho'])
+            if os.path.exists(caminho_abs):
+                entradas.append((caminho_abs, item, f))
+
+    # Fotos gerais (sem item vinculado)
+    for f in fotos_gerais:
+        caminho_abs = os.path.join('fotos', f['caminho'])
+        if os.path.exists(caminho_abs):
+            entradas.append((caminho_abs, None, f))
+
+    if not entradas:
+        return []
+
+    elementos = [PageBreak()]
+
+    # Cabeçalho da seção
+    p_hdr = Paragraph('REGISTRO FOTOGRÁFICO', estilos['sec'])
+    tbl_hdr = Table([[p_hdr]], colWidths=[TABLE_W])
+    tbl_hdr.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), cor_h),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elementos.append(tbl_hdr)
+    elementos.append(Spacer(1, 0.4 * cm))
+
+    info_w = TABLE_W - ANNEX_IMG_W - 0.5 * cm
+
+    for idx, (caminho_abs, item, foto) in enumerate(entradas, 1):
+        img = Image(caminho_abs, width=ANNEX_IMG_W, height=ANNEX_IMG_H)
+
+        if item:
+            s = item.get('status', 'NA')
+            status_cor = {'C': '#16a34a', 'NC': '#dc2626', 'NA': '#6B7280'}.get(s, '#6B7280')
+            status_txt = STATUS_LABEL.get(s, '—')
+
+            linhas_info = [
+                Paragraph(f"<b>Item {item['item_nr']}</b>  "
+                          f"<font color='{status_cor}'>[{status_txt}]</font>",
+                          estilos['annex_nr']),
+                Spacer(1, 0.15 * cm),
+                Paragraph(item['descricao'], estilos['annex_desc']),
+            ]
+            if item.get('observacao'):
+                linhas_info.append(Spacer(1, 0.1 * cm))
+                linhas_info.append(Paragraph(f"Obs: {item['observacao']}", estilos['annex_obs']))
+            if item.get('local_ref'):
+                linhas_info.append(Paragraph(f"Local/Ref: {item['local_ref']}", estilos['annex_obs']))
+        else:
+            linhas_info = [Paragraph('<b>Foto geral</b>', estilos['annex_nr'])]
+
+        linhas_info.append(Spacer(1, 0.1 * cm))
+        nome_arq = os.path.basename(foto['caminho'])
+        linhas_info.append(Paragraph(f"Arquivo: {nome_arq}", estilos['annex_obs']))
+
+        info_cell = linhas_info
+
+        row_bg = colors.HexColor('#FFF5F5') if (item and item.get('status') == 'NC') else colors.HexColor('#FAFAFA')
+
+        foto_tbl = Table(
+            [[img, info_cell]],
+            colWidths=[ANNEX_IMG_W + 0.3 * cm, info_w],
+        )
+        foto_tbl.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 4),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+            ('BACKGROUND', (0, 0), (-1, -1), row_bg),
+            ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+            ('LINEBELOW', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
+        ]))
+        elementos.append(KeepTogether([foto_tbl, Spacer(1, 0.25 * cm)]))
 
     return elementos
 
@@ -243,22 +382,14 @@ def _resultado_assinaturas(resultado, estilos, cor_h):
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
-    res_map = {
-        'APROVADO': '( X ) APROVADO',
-        'APROVADO COM RESSALVAS': '( X ) APROVADO COM RESSALVAS',
-        'REPROVADO': '( X ) REPROVADO',
-    }
-    res_linha = res_map.get(resultado, '(   ) APROVADO     (   ) APROVADO COM RESSALVAS     (   ) REPROVADO')
-    if resultado in res_map:
-        # Marcar apenas o selecionado
-        ops = ['APROVADO', 'APROVADO COM RESSALVAS', 'REPROVADO']
-        partes = []
-        for op in ops:
-            if op == resultado:
-                partes.append(f'<b>( X ) {op}</b>')
-            else:
-                partes.append(f'(   ) {op}')
-        res_linha = '     '.join(partes)
+    ops = ['APROVADO', 'APROVADO COM RESSALVAS', 'REPROVADO']
+    partes = []
+    for op in ops:
+        if op == resultado:
+            partes.append(f'<b>( X ) {op}</b>')
+        else:
+            partes.append(f'(   ) {op}')
+    res_linha = '     '.join(partes)
 
     p_res = Paragraph(res_linha, estilos['label'])
     tbl_res = Table([[p_res]], colWidths=[TABLE_W])
@@ -272,7 +403,6 @@ def _resultado_assinaturas(resultado, estilos, cor_h):
 
     col_w = TABLE_W / 3
     assin_hdr = [['Responsável UDE', 'Responsável Obra / Empresa', 'Fiscal / Supervisor']]
-    assin_body = [['', '', '']]
     assin_hdr_tbl = Table(assin_hdr, colWidths=[col_w] * 3)
     assin_hdr_tbl.setStyle(TableStyle([
         ('FONTNAME', (0, 0), (-1, -1), 'Helvetica-Bold'),
@@ -284,7 +414,7 @@ def _resultado_assinaturas(resultado, estilos, cor_h):
         ('TOPPADDING', (0, 0), (-1, -1), 4),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
-    assin_body_tbl = Table(assin_body, colWidths=[col_w] * 3, rowHeights=[2.5 * cm])
+    assin_body_tbl = Table([['', '', '']], colWidths=[col_w] * 3, rowHeights=[2.5 * cm])
     assin_body_tbl.setStyle(TableStyle([
         ('BOX', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#D1D5DB')),
@@ -293,25 +423,31 @@ def _resultado_assinaturas(resultado, estilos, cor_h):
     return [tbl_hdr, tbl_res, Spacer(1, 0.3 * cm), assin_hdr_tbl, assin_body_tbl]
 
 
-def gerar_pdf(checklist: dict, itens: list, fotos: list) -> bytes:
+def gerar_pdf(checklist: dict, itens: list, fotos: list, config: dict = None) -> bytes:
+    if config is None:
+        config = {}
     buf = io.BytesIO()
     tipo = checklist.get('tipo', 'lote')
     cor_h_hex, cor_s_hex = CORES.get(tipo, ('#5C1A2E', '#8B3A5A'))
     cor_h = colors.HexColor(cor_h_hex)
     cor_s = colors.HexColor(cor_s_hex)
 
+    nome_obra = config.get('nome_obra', 'Empreendimento')
+    num_obra = config.get('numero_obra', '—')
+    construtora = config.get('construtora', '')
+
     doc = SimpleDocTemplate(
         buf, pagesize=A4,
         leftMargin=L_MARGIN, rightMargin=R_MARGIN,
         topMargin=2 * cm, bottomMargin=3 * cm,
         title=TITULOS.get(tipo, 'Checklist de Recebimento'),
-        author='UDE — Viana & Moura Construções'
+        author=f'UDE — {construtora}'
     )
 
     story = []
     estilos = _estilos(cor_h)
 
-    story.extend(_bloco_cabecalho(checklist, estilos, cor_h, cor_s))
+    story.extend(_bloco_cabecalho(checklist, estilos, cor_h, cor_s, config))
     story.append(Spacer(1, 0.3 * cm))
     story.append(_legenda(estilos))
     story.append(Spacer(1, 0.4 * cm))
@@ -321,9 +457,12 @@ def gerar_pdf(checklist: dict, itens: list, fotos: list) -> bytes:
         secoes.setdefault(item['secao'], []).append(item)
 
     fotos_por_item = {}
+    fotos_gerais = []
     for f in fotos:
         if f.get('item_id'):
             fotos_por_item.setdefault(f['item_id'], []).append(f)
+        else:
+            fotos_gerais.append(f)
 
     for secao_nome, secao_itens in secoes.items():
         story.extend(_secao(secao_nome, secao_itens, fotos_por_item, estilos, cor_h, cor_s))
@@ -333,11 +472,16 @@ def gerar_pdf(checklist: dict, itens: list, fotos: list) -> bytes:
     story.append(Spacer(1, 0.3 * cm))
     story.extend(_resultado_assinaturas(checklist.get('resultado', ''), estilos, cor_h))
 
+    # Anexo fotográfico (nova página)
+    story.extend(_registro_fotografico(itens, fotos_por_item, fotos_gerais, estilos, cor_h))
+
+    rodape_txt = f'Obra {num_obra} — {nome_obra} | UDE — {construtora}'
+
     def _rodape(canvas, doc):
         canvas.saveState()
         canvas.setFont('Helvetica', 7)
         canvas.setFillColor(colors.HexColor('#666666'))
-        txt = f'Página {doc.page} | Obra 38 — Recanto das Oliveiras | UDE — Viana & Moura Construções'
+        txt = f'Página {doc.page} | {rodape_txt}'
         canvas.drawCentredString(PAGE_W / 2, 1.2 * cm, txt)
         canvas.setStrokeColor(colors.HexColor('#CCCCCC'))
         canvas.line(L_MARGIN, 1.5 * cm, PAGE_W - R_MARGIN, 1.5 * cm)

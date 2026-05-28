@@ -66,6 +66,87 @@
     <a href="/relatorio" class="btn-secondary">📋 Relatório Completo</a>
     <a href="/checklist/novo" class="btn-secondary">+ Novo Checklist</a>
   </div>
+
+  <div class="dash-box mt16" id="box-config">
+    <div class="config-header">
+      <h2>Empreendimento</h2>
+      <button class="btn-icon" id="btn-editar-config" title="Editar">✏️ Editar</button>
+    </div>
+    <div id="config-view">
+      <table class="table-simples">
+        <tr><td class="cfg-lbl">Nome da Obra</td><td id="cv-nome">{{ obra_config.get('nome_obra', '—') }}</td></tr>
+        <tr><td class="cfg-lbl">Número / Código</td><td id="cv-numero">{{ obra_config.get('numero_obra', '—') }}</td></tr>
+        <tr><td class="cfg-lbl">Construtora</td><td id="cv-construtora">{{ obra_config.get('construtora', '—') }}</td></tr>
+      </table>
+    </div>
+    <div id="config-form" style="display:none">
+      <div class="cfg-row">
+        <label class="cfg-lbl">Nome da Obra</label>
+        <input type="text" id="cf-nome" class="cfg-input" value="{{ obra_config.get('nome_obra', '') }}" placeholder="Ex: Recanto das Oliveiras">
+      </div>
+      <div class="cfg-row">
+        <label class="cfg-lbl">Número / Código</label>
+        <input type="text" id="cf-numero" class="cfg-input" value="{{ obra_config.get('numero_obra', '') }}" placeholder="Ex: 38">
+      </div>
+      <div class="cfg-row">
+        <label class="cfg-lbl">Construtora</label>
+        <input type="text" id="cf-construtora" class="cfg-input" value="{{ obra_config.get('construtora', '') }}" placeholder="Ex: Viana & Moura Construções">
+      </div>
+      <div class="cfg-acoes">
+        <button class="btn-primary" id="btn-salvar-config">Salvar</button>
+        <button class="btn-secondary" id="btn-cancelar-config">Cancelar</button>
+      </div>
+    </div>
+  </div>
 </div>
 <script src="/static/js/dashboard.js"></script>
+<script>
+(function () {
+  const btnEditar = document.getElementById('btn-editar-config');
+  const btnSalvar = document.getElementById('btn-salvar-config');
+  const btnCancelar = document.getElementById('btn-cancelar-config');
+  const view = document.getElementById('config-view');
+  const form = document.getElementById('config-form');
+
+  btnEditar.addEventListener('click', () => {
+    view.style.display = 'none';
+    form.style.display = 'block';
+    btnEditar.style.display = 'none';
+  });
+
+  btnCancelar.addEventListener('click', () => {
+    view.style.display = '';
+    form.style.display = 'none';
+    btnEditar.style.display = '';
+  });
+
+  btnSalvar.addEventListener('click', async () => {
+    const payload = {
+      nome_obra:   document.getElementById('cf-nome').value.trim(),
+      numero_obra: document.getElementById('cf-numero').value.trim(),
+      construtora: document.getElementById('cf-construtora').value.trim()
+    };
+    const r = await fetch('/api/config', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if (r.ok) {
+      document.getElementById('cv-nome').textContent = payload.nome_obra || '—';
+      document.getElementById('cv-numero').textContent = payload.numero_obra || '—';
+      document.getElementById('cv-construtora').textContent = payload.construtora || '—';
+      view.style.display = '';
+      form.style.display = 'none';
+      btnEditar.style.display = '';
+      // atualiza header e footer sem recarregar a página
+      document.querySelectorAll('.brand-sub').forEach(el => {
+        el.textContent = 'Obra ' + (payload.numero_obra || '—') + ' — ' + (payload.nome_obra || 'Empreendimento');
+      });
+      document.querySelectorAll('.app-footer').forEach(el => {
+        el.textContent = 'Obra ' + (payload.numero_obra || '—') + ' — ' + (payload.nome_obra || 'Empreendimento') + '  |  UDE — ' + (payload.construtora || '');
+      });
+    }
+  });
+})();
+</script>
 {% endblock %}

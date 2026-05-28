@@ -57,62 +57,44 @@ SCHEMAS = {
         'titulo': 'Checklist de Recebimento — Pavimentação',
         'secoes': [
             {
-                'titulo': '1. Subleito e Base',
+                'titulo': '1. Meio-Fio',
                 'itens': [
-                    {'nr': '1.1', 'desc': 'Compactação do subleito: resultado de ensaio (DCP ou Proctor) conforme projeto', 'foto_se_nc': True},
-                    {'nr': '1.2', 'desc': 'Subleito sem material orgânico, entulho ou barro exposto', 'foto_se_nc': True},
+                    {'nr': '1.1', 'desc': 'Alinhamento do meio-fio: desvio máximo ±2 cm — verificar com linha de nylon', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Nivelamento do topo do meio-fio — sem desníveis abruptos entre peças', 'foto_se_nc': True},
+                    {'nr': '1.3', 'desc': 'Altura do espelho (face vertical) conforme projeto', 'foto_se_nc': True},
+                    {'nr': '1.4', 'desc': 'Espessura do rejunte entre peças do meio-fio: uniforme e sem falhas', 'foto_se_nc': True},
+                    {'nr': '1.5', 'desc': 'Travesseiro de argamassa sob o meio-fio: visível e íntegro nas extremidades', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '2. Meio-Fio',
+                'titulo': '2. Paver / Pavimento',
                 'itens': [
-                    {'nr': '2.1', 'desc': 'Alinhamento do meio-fio: desvio máximo ±2 cm — verificar com linha de nylon', 'foto_se_nc': True},
-                    {'nr': '2.2', 'desc': 'Nivelamento do topo do meio-fio — sem desníveis abruptos entre peças', 'foto_se_nc': True},
-                    {'nr': '2.3', 'desc': 'Altura do espelho (face vertical) conforme projeto', 'foto_se_nc': True},
-                    {'nr': '2.4', 'desc': 'Espessura do rejunte entre peças do meio-fio: uniforme e sem falhas', 'foto_se_nc': True},
-                    {'nr': '2.5', 'desc': 'Travesseiro de argamassa sob o meio-fio executado corretamente', 'foto_se_nc': True},
+                    {'nr': '2.1', 'desc': 'Esquadro das fileiras de paver — verificar com linha e esquadro', 'foto_se_nc': True},
+                    {'nr': '2.2', 'desc': 'Alinhamento geral do pavimento — sem fileiras tortas', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Peças sem quebradas, lascadas, manchadas ou invertidas', 'foto_se_nc': True},
+                    {'nr': '2.4', 'desc': 'Paginação conforme projeto (padrão espinha de peixe ou outro)', 'foto_se_nc': True},
+                    {'nr': '2.5', 'desc': 'Rejunte: preenchimento uniforme com areia fina, sem falhas ou buracos', 'foto_se_nc': True},
+                    {'nr': '2.6', 'desc': 'Flecha máxima de ±1 cm medida com régua de 3 m', 'foto_se_nc': True},
+                    {'nr': '2.7', 'desc': 'Contenções laterais (sarjetas/bordaduras) instaladas e fixas', 'foto_se_nc': True},
+                    {'nr': '2.8', 'desc': 'Pavimento sem afundamentos ou emboçamentos pontuais — percorrer toda a área', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '3. Colchão de Areia',
+                'titulo': '3. Boulevard (quando aplicável)',
                 'itens': [
-                    {'nr': '3.1', 'desc': 'Espessura do colchão de areia conforme projeto (medir em furo ou borda)', 'foto_se_nc': True},
-                    {'nr': '3.2', 'desc': 'Nivelamento do colchão — superfície uniforme antes do assentamento', 'foto_se_nc': True},
-                    {'nr': '3.3', 'desc': 'Adensamento correto (sem movimento de areia ao pisar)', 'foto_se_nc': True},
+                    {'nr': '3.1', 'desc': 'Inclinações transversais do canteiro corretas (escoamento correto)', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'Faixa de concreto executada com dimensões corretas', 'foto_se_nc': True},
+                    {'nr': '3.3', 'desc': 'Nivelamento das tampas de caixa no canteiro', 'foto_se_nc': True},
+                    {'nr': '3.4', 'desc': 'Canaleta instalada e com escoamento funcional', 'foto_se_nc': True},
+                    {'nr': '3.5', 'desc': 'Acabamento do concreto: superfície lisa, sem falhas ou segregação', 'foto_se_nc': True},
+                    {'nr': '3.6', 'desc': 'Juntas de dilatação executadas nos espaçamentos corretos', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '4. Paver / Pavimento',
+                'titulo': '4. Vagas de Garagem',
                 'itens': [
-                    {'nr': '4.1', 'desc': 'Esquadro das fileiras de paver — verificar com linha e esquadro', 'foto_se_nc': True},
-                    {'nr': '4.2', 'desc': 'Alinhamento geral do pavimento — sem fileiras tortas', 'foto_se_nc': True},
-                    {'nr': '4.3', 'desc': 'Peças sem quebradas, lascadas, manchadas ou invertidas', 'foto_se_nc': True},
-                    {'nr': '4.4', 'desc': 'Paginação conforme projeto (padrão espinha de peixe ou outro)', 'foto_se_nc': True},
-                    {'nr': '4.5', 'desc': 'Rejunte: preenchimento uniforme com areia fina, sem falhas ou buracos', 'foto_se_nc': True},
-                    {'nr': '4.6', 'desc': 'Adensamento final com placa vibratória executado', 'foto_se_nc': True},
-                    {'nr': '4.7', 'desc': 'Flecha máxima de ±1 cm medida com régua de 3 m', 'foto_se_nc': True},
-                    {'nr': '4.8', 'desc': 'Contenções laterais (sarjetas/bordaduras) instaladas e fixas', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': '5. Boulevard (quando aplicável)',
-                'itens': [
-                    {'nr': '5.1', 'desc': 'Compactação do aterro do canteiro central conforme projeto', 'foto_se_nc': True},
-                    {'nr': '5.2', 'desc': 'Inclinações transversais do canteiro corretas (escoamento correto)', 'foto_se_nc': True},
-                    {'nr': '5.3', 'desc': 'Faixa de concreto executada com dimensões corretas', 'foto_se_nc': True},
-                    {'nr': '5.4', 'desc': 'Nivelamento das tampas de caixa no canteiro', 'foto_se_nc': True},
-                    {'nr': '5.5', 'desc': 'Canaleta instalada e com escoamento funcional', 'foto_se_nc': True},
-                    {'nr': '5.6', 'desc': 'Slump test do concreto: resultado registrado e conforme especificação', 'foto_se_nc': True},
-                    {'nr': '5.7', 'desc': 'Espessura do concreto conforme projeto', 'foto_se_nc': True},
-                    {'nr': '5.8', 'desc': 'Acabamento do concreto: superfície lisa, sem falhas ou segregação', 'foto_se_nc': True},
-                    {'nr': '5.9', 'desc': 'Juntas de dilatação executadas nos espaçamentos corretos', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': '6. Vagas de Garagem',
-                'itens': [
-                    {'nr': '6.1', 'desc': 'Seção tipo das vagas conforme projeto (dimensões e nivelamento)', 'foto_se_nc': True},
-                    {'nr': '6.2', 'desc': 'Demarcação das vagas conforme projeto (quando prevista)', 'foto_se_nc': True},
+                    {'nr': '4.1', 'desc': 'Seção tipo das vagas conforme projeto (dimensões e nivelamento)', 'foto_se_nc': True},
+                    {'nr': '4.2', 'desc': 'Demarcação das vagas conforme projeto (quando prevista)', 'foto_se_nc': True},
                 ]
             },
         ],
@@ -126,9 +108,9 @@ SCHEMAS = {
             {
                 'titulo': '1. Infraestrutura do Passeio',
                 'itens': [
-                    {'nr': '1.1', 'desc': 'Compactação do aterro sob o passeio conforme projeto', 'foto_se_nc': True},
-                    {'nr': '1.2', 'desc': 'Inclinação transversal do passeio (1–2%) — drenagem para a rua', 'foto_se_nc': True},
-                    {'nr': '1.3', 'desc': 'Vala de contenção lateral executada e íntegra', 'foto_se_nc': True},
+                    {'nr': '1.1', 'desc': 'Inclinação transversal do passeio (1–2%) — drenagem para a rua', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Vala de contenção lateral executada e íntegra', 'foto_se_nc': True},
+                    {'nr': '1.3', 'desc': 'Passeio sem afundamentos ou recalques visíveis', 'foto_se_nc': True},
                 ]
             },
             {
@@ -136,18 +118,16 @@ SCHEMAS = {
                 'itens': [
                     {'nr': '2.1', 'desc': 'Faixa de serviço executada com largura correta', 'foto_se_nc': True},
                     {'nr': '2.2', 'desc': 'Rampa de veículos: largura conforme projeto', 'foto_se_nc': True},
-                    {'nr': '2.3', 'desc': 'Armadura da rampa: cobrimento mínimo respeitado (visível nas laterais)', 'foto_se_nc': True},
-                    {'nr': '2.4', 'desc': 'Travamento da rampa no meio-fio: sem folgas ou deslocamento', 'foto_se_nc': True},
-                    {'nr': '2.5', 'desc': 'Espessura do concreto da rampa conforme projeto', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Travamento da rampa no meio-fio: sem folgas ou deslocamento', 'foto_se_nc': True},
+                    {'nr': '2.4', 'desc': 'Superfície da rampa: sem trincas, segregação ou falhas visíveis', 'foto_se_nc': True},
                 ]
             },
             {
                 'titulo': '3. Rampa de Acessibilidade',
                 'itens': [
-                    {'nr': '3.1', 'desc': 'Cobrimento da armadura respeitado (visível nas laterais da rampa)', 'foto_se_nc': True},
-                    {'nr': '3.2', 'desc': 'Espessura do concreto conforme projeto', 'foto_se_nc': True},
-                    {'nr': '3.3', 'desc': 'Acabamento da rampa: superfície antiderrapante e sem falhas', 'foto_se_nc': True},
-                    {'nr': '3.4', 'desc': 'Inclinação da rampa dentro do limite da NBR 9050 (máx 8,33%)', 'foto_se_nc': True},
+                    {'nr': '3.1', 'desc': 'Acabamento da rampa: superfície antiderrapante e sem falhas', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'Inclinação da rampa dentro do limite da NBR 9050 (máx 8,33%)', 'foto_se_nc': True},
+                    {'nr': '3.3', 'desc': 'Rampa sem trincas, lascas ou desplacamento', 'foto_se_nc': True},
                 ]
             },
             {
@@ -164,8 +144,7 @@ SCHEMAS = {
                 'itens': [
                     {'nr': '5.1', 'desc': 'Plurigoma ou paginação conforme projeto', 'foto_se_nc': True},
                     {'nr': '5.2', 'desc': 'Rejunte sem vazios — preenchimento uniforme', 'foto_se_nc': True},
-                    {'nr': '5.3', 'desc': 'Slump test do concreto do passeio: resultado registrado', 'foto_se_nc': True},
-                    {'nr': '5.4', 'desc': 'Juntas de dilatação nos espaçamentos corretos', 'foto_se_nc': True},
+                    {'nr': '5.3', 'desc': 'Juntas de dilatação nos espaçamentos corretos', 'foto_se_nc': True},
                 ]
             },
             {
@@ -185,56 +164,37 @@ SCHEMAS = {
         'titulo': 'Checklist de Recebimento — Sistema de Abastecimento de Água',
         'secoes': [
             {
-                'titulo': '1. Escavação da Vala',
+                'titulo': '1. Documentação e Teste de Estanqueidade',
                 'itens': [
-                    {'nr': '1.1', 'desc': 'Largura da vala: tolerância ±5 cm conforme projeto', 'foto_se_nc': True},
-                    {'nr': '1.2', 'desc': 'Profundidade da vala: tolerância ±5 cm conforme projeto', 'foto_se_nc': True},
-                    {'nr': '1.3', 'desc': 'Escoramento da vala executado (quando profundidade > 1,25 m)', 'foto_se_nc': True},
-                    {'nr': '1.4', 'desc': 'Material escavado depositado a no mínimo 50 cm da borda', 'foto_se_nc': True},
+                    {'nr': '1.1', 'desc': 'Laudo do teste de estanqueidade disponível: pressão de teste, duração e resultado registrados', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Diâmetro e material da tubulação conformes ao projeto (verificar via nota fiscal ou as-built)', 'foto_se_nc': True},
+                    {'nr': '1.3', 'desc': 'As-built da rede entregue pelo empreiteiro', 'foto_se_nc': False},
                 ]
             },
             {
-                'titulo': '2. Colchão de Areia',
+                'titulo': '2. Superfície e Reaterro',
                 'itens': [
-                    {'nr': '2.1', 'desc': 'Espessura do colchão: tolerância ±3 cm', 'foto_se_nc': True},
-                    {'nr': '2.2', 'desc': 'Nivelamento da camada de areia', 'foto_se_nc': True},
-                    {'nr': '2.3', 'desc': 'Compactação leve executada', 'foto_se_nc': True},
+                    {'nr': '2.1', 'desc': 'Superfície sobre a vala recomposta: sem afundamentos, recalques ou emboçamentos visíveis', 'foto_se_nc': True},
+                    {'nr': '2.2', 'desc': 'Tampas das caixas de registro: niveladas com o passeio/pavimento, sem danos', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Ausência de vazamentos visíveis na superfície ou nas caixas de registro acessíveis', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '3. Assentamento da Tubulação',
+                'titulo': '3. Teste Funcional',
                 'itens': [
-                    {'nr': '3.1', 'desc': 'Posicionamento correto da tubulação (centrada na vala)', 'foto_se_nc': True},
-                    {'nr': '3.2', 'desc': 'Diâmetro da tubulação conforme projeto', 'foto_se_nc': True},
-                    {'nr': '3.3', 'desc': 'Conexões e acessórios instalados conforme projeto', 'foto_se_nc': True},
-                    {'nr': '3.4', 'desc': 'Ancoragem nos pontos especificados (curvas, tês, registros)', 'foto_se_nc': True},
-                    {'nr': '3.5', 'desc': 'Contenção lateral (encabeçamento) executada', 'foto_se_nc': True},
+                    {'nr': '3.1', 'desc': 'Abrir registros e verificar fluxo de água nos pontos de saída da rede', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'Pressão de saída compatível com o projeto em pontos extremos da rede', 'foto_se_nc': True},
+                    {'nr': '3.3', 'desc': 'Ausência de vazamentos audíveis ou bolsões de umidade na superfície', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '4. Teste e Proteção',
+                'titulo': '4. Reservatório e Elevatória (marcar NA quando não aplicável)',
                 'itens': [
-                    {'nr': '4.1', 'desc': 'Teste de estanqueidade executado: pressão e duração conforme projeto', 'foto_se_nc': True},
-                    {'nr': '4.2', 'desc': 'Recobrimento sobre a tubulação: tolerância ±2 cm', 'foto_se_nc': True},
-                    {'nr': '4.3', 'desc': 'Envelopamento em concreto executado onde previsto em projeto', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': '5. Reaterro e Compactação',
-                'itens': [
-                    {'nr': '5.1', 'desc': 'Reaterro executado conforme POP (material adequado, sem pedras grandes)', 'foto_se_nc': True},
-                    {'nr': '5.2', 'desc': 'Espessura das camadas de reaterro conforme especificação', 'foto_se_nc': True},
-                    {'nr': '5.3', 'desc': 'Compactação por camadas executada', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': '6. Reservatório e Elevatória (marcar NA quando não aplicável)',
-                'itens': [
-                    {'nr': '6.1', 'desc': 'Locação do reservatório/elevatória conforme projeto (proj. SAA-03 a SAA-06)', 'foto_se_nc': True},
-                    {'nr': '6.2', 'desc': 'Estrutura sem trincas, recalques ou deformações visíveis', 'foto_se_nc': True},
-                    {'nr': '6.3', 'desc': 'Nível operacional da água conforme projeto', 'foto_se_nc': True},
-                    {'nr': '6.4', 'desc': 'Equipamentos (bombas, válvulas, registros) instalados e funcionando', 'foto_se_nc': True},
-                    {'nr': '6.5', 'desc': 'Caixa ou poço de visita da elevatória acessível e sem infiltração', 'foto_se_nc': True},
+                    {'nr': '4.1', 'desc': 'Locação do reservatório/elevatória conforme projeto (proj. SAA-03 a SAA-06)', 'foto_se_nc': True},
+                    {'nr': '4.2', 'desc': 'Estrutura sem trincas, recalques ou deformações visíveis', 'foto_se_nc': True},
+                    {'nr': '4.3', 'desc': 'Nível operacional da água conforme projeto', 'foto_se_nc': True},
+                    {'nr': '4.4', 'desc': 'Equipamentos (bombas, válvulas, registros) instalados e funcionando', 'foto_se_nc': True},
+                    {'nr': '4.5', 'desc': 'Caixa ou poço de visita da elevatória acessível e sem infiltração', 'foto_se_nc': True},
                 ]
             },
         ],
@@ -246,47 +206,27 @@ SCHEMAS = {
         'titulo': 'Checklist de Recebimento — Sistema de Drenagem',
         'secoes': [
             {
-                'titulo': '1. Escavação da Vala',
+                'titulo': '1. Superfície e Reaterro',
                 'itens': [
-                    {'nr': '1.1', 'desc': 'Profundidade da vala: tolerância ±5 cm conforme projeto', 'foto_se_nc': True},
-                    {'nr': '1.2', 'desc': 'Alinhamento da vala conforme projeto', 'foto_se_nc': True},
-                    {'nr': '1.3', 'desc': 'Escoramento executado onde necessário (profundidade > 1,25 m)', 'foto_se_nc': True},
-                    {'nr': '1.4', 'desc': 'Material escavado a distância mínima segura da borda', 'foto_se_nc': True},
+                    {'nr': '1.1', 'desc': 'Superfície sobre a vala recomposta: sem afundamentos, recalques ou emboçamentos visíveis', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Ausência de pontos de acúmulo de água sobre a área da vala', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '2. Colchão de Areia',
+                'titulo': '2. Pontos de Captação',
                 'itens': [
-                    {'nr': '2.1', 'desc': 'Espessura do colchão: tolerância ±3 cm', 'foto_se_nc': True},
-                    {'nr': '2.2', 'desc': 'Nivelamento da camada', 'foto_se_nc': True},
-                    {'nr': '2.3', 'desc': 'Compactação leve executada', 'foto_se_nc': True},
+                    {'nr': '2.1', 'desc': 'Grelhas instaladas, niveladas com o pavimento e sem danos', 'foto_se_nc': True},
+                    {'nr': '2.2', 'desc': 'Bocas de lobo: nivelamento e condição estrutural', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Tampas das caixas de inspeção: niveladas e sem danos', 'foto_se_nc': True},
+                    {'nr': '2.4', 'desc': 'Escoamento funcional verificado (teste com água)', 'foto_se_nc': True},
+                    {'nr': '2.5', 'desc': 'Ausência de entupimentos: água não retorna ou extravasa nos pontos de captação', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': '3. Assentamento da Tubulação',
+                'titulo': '3. Documentação',
                 'itens': [
-                    {'nr': '3.1', 'desc': 'Posicionamento correto da tubulação', 'foto_se_nc': True},
-                    {'nr': '3.2', 'desc': 'Declividade conforme projeto (mínimo 0,5% ou conforme laudo)', 'foto_se_nc': True},
-                    {'nr': '3.3', 'desc': 'Diâmetro da tubulação conforme projeto', 'foto_se_nc': True},
-                    {'nr': '3.4', 'desc': 'Contenção lateral (encabeçamento) executada', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': '4. Proteção e Reaterro',
-                'itens': [
-                    {'nr': '4.1', 'desc': 'Envelopamento em concreto executado onde previsto', 'foto_se_nc': True},
-                    {'nr': '4.2', 'desc': 'Reaterro com material adequado', 'foto_se_nc': True},
-                    {'nr': '4.3', 'desc': 'Espessura das camadas de reaterro conforme especificação', 'foto_se_nc': True},
-                    {'nr': '4.4', 'desc': 'Compactação por camadas executada', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': '5. Pontos de Captação',
-                'itens': [
-                    {'nr': '5.1', 'desc': 'Grelhas instaladas, niveladas com o pavimento e sem danos', 'foto_se_nc': True},
-                    {'nr': '5.2', 'desc': 'Bocas de lobo: nivelamento e condição estrutural', 'foto_se_nc': True},
-                    {'nr': '5.3', 'desc': 'Tampas das caixas de inspeção: niveladas e sem danos', 'foto_se_nc': True},
-                    {'nr': '5.4', 'desc': 'Escoamento funcional verificado (teste com água)', 'foto_se_nc': True},
+                    {'nr': '3.1', 'desc': 'Diâmetro e material da tubulação conformes ao projeto (verificar via nota fiscal ou as-built)', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'As-built da rede entregue pelo empreiteiro', 'foto_se_nc': False},
                 ]
             },
         ],
@@ -298,56 +238,39 @@ SCHEMAS = {
         'titulo': 'Checklist de Recebimento — Sistema de Esgotamento Sanitário',
         'secoes': [
             {
-                'titulo': 'A.1. Escavação — Rede Coletora',
+                'titulo': 'A.1. Rede Coletora — Superfície e Documentação',
                 'itens': [
-                    {'nr': 'A.1.1', 'desc': 'Profundidade da vala: tolerância ±5 cm conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'A.1.2', 'desc': 'Alinhamento da vala conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'A.1.3', 'desc': 'Escoramento executado onde necessário', 'foto_se_nc': True},
-                    {'nr': 'A.1.4', 'desc': 'Material escavado a distância segura da borda', 'foto_se_nc': True},
+                    {'nr': 'A.1.1', 'desc': 'Superfície sobre a vala recomposta: sem afundamentos, recalques ou emboçamentos visíveis', 'foto_se_nc': True},
+                    {'nr': 'A.1.2', 'desc': 'Diâmetro e material da tubulação conformes ao projeto (verificar via nota fiscal ou as-built)', 'foto_se_nc': True},
+                    {'nr': 'A.1.3', 'desc': 'As-built da rede coletora entregue pelo empreiteiro', 'foto_se_nc': False},
                 ]
             },
             {
-                'titulo': 'A.2. Colchão de Areia — Rede Coletora',
+                'titulo': 'A.2. Rede Coletora — Teste Funcional',
                 'itens': [
-                    {'nr': 'A.2.1', 'desc': 'Espessura do colchão: tolerância ±3 cm', 'foto_se_nc': True},
-                    {'nr': 'A.2.2', 'desc': 'Nivelamento da camada', 'foto_se_nc': True},
-                    {'nr': 'A.2.3', 'desc': 'Compactação leve executada', 'foto_se_nc': True},
+                    {'nr': 'A.2.1', 'desc': 'Esgoto flui livremente até as caixas de inspeção — sem refluxo ou obstrução', 'foto_se_nc': True},
+                    {'nr': 'A.2.2', 'desc': 'Ausência de odor excessivo indicando obstrução ou tampa aberta', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': 'A.3. Tubulação — Rede Coletora',
+                'titulo': 'B.3. Caixa de Inspeção',
                 'itens': [
-                    {'nr': 'A.3.1', 'desc': 'Assentamento correto da tubulação', 'foto_se_nc': True},
-                    {'nr': 'A.3.2', 'desc': 'Declividade mínima conforme projeto (registrar valor)', 'foto_se_nc': True},
-                    {'nr': 'A.3.3', 'desc': 'Diâmetro conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'A.3.4', 'desc': 'Contenção lateral executada', 'foto_se_nc': True},
-                    {'nr': 'A.3.5', 'desc': 'Envelopamento em concreto onde previsto', 'foto_se_nc': True},
-                    {'nr': 'A.3.6', 'desc': 'Reaterro com material adequado', 'foto_se_nc': True},
-                    {'nr': 'A.3.7', 'desc': 'Compactação por camadas executada', 'foto_se_nc': True},
+                    {'nr': 'B.3.1', 'desc': 'Janelas do anel: posicionamento com tolerância ±3 cm', 'foto_se_nc': True},
+                    {'nr': 'B.3.2', 'desc': 'Anéis acima do terreno conforme projeto', 'foto_se_nc': True},
+                    {'nr': 'B.3.3', 'desc': 'Chumbamento da tubulação e piso chanfrado executados (verificar abrindo a tampa)', 'foto_se_nc': True},
+                    {'nr': 'B.3.4', 'desc': 'Tampa instalada: nivelada, sem folgas e sem danos', 'foto_se_nc': True},
+                    {'nr': 'B.3.5', 'desc': 'Superfície ao redor da caixa recomposta sem recalques', 'foto_se_nc': True},
                 ]
             },
             {
-                'titulo': 'B.4. Caixa de Inspeção',
+                'titulo': 'B.4. Poço de Visita',
                 'itens': [
-                    {'nr': 'B.4.1', 'desc': 'Profundidade e largura da vala da caixa conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'B.4.2', 'desc': 'Espessura da base de concreto conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'B.4.3', 'desc': 'Janelas do anel: posicionamento com tolerância ±3 cm', 'foto_se_nc': True},
-                    {'nr': 'B.4.4', 'desc': 'Anéis acima do terreno conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'B.4.5', 'desc': 'Chumbamento da tubulação e piso chanfrado executados', 'foto_se_nc': True},
-                    {'nr': 'B.4.6', 'desc': 'Tampa instalada: nivelada, sem folgas e sem danos', 'foto_se_nc': True},
-                    {'nr': 'B.4.7', 'desc': 'Reaterro e compactação executados', 'foto_se_nc': True},
-                ]
-            },
-            {
-                'titulo': 'B.5. Poço de Visita',
-                'itens': [
-                    {'nr': 'B.5.1', 'desc': 'Profundidade e largura da escavação conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'B.5.2', 'desc': 'Espessura da base de concreto conforme projeto', 'foto_se_nc': True},
-                    {'nr': 'B.5.3', 'desc': 'Alvenaria maciça: prumo e espessura corretos', 'foto_se_nc': True},
-                    {'nr': 'B.5.4', 'desc': 'Chapisco + revestimento interno executados', 'foto_se_nc': True},
-                    {'nr': 'B.5.5', 'desc': 'Chumbamento das tubulações no poço', 'foto_se_nc': True},
-                    {'nr': 'B.5.6', 'desc': 'Anéis pré-moldados assentados e alinhados', 'foto_se_nc': True},
-                    {'nr': 'B.5.7', 'desc': 'Reaterro e compactação executados', 'foto_se_nc': True},
+                    {'nr': 'B.4.1', 'desc': 'Alvenaria maciça: prumo e condição visível sem trincas ou deslocamentos', 'foto_se_nc': True},
+                    {'nr': 'B.4.2', 'desc': 'Chapisco + revestimento interno executados e íntegros', 'foto_se_nc': True},
+                    {'nr': 'B.4.3', 'desc': 'Chumbamento das tubulações no poço sem folgas ou infiltração aparente', 'foto_se_nc': True},
+                    {'nr': 'B.4.4', 'desc': 'Anéis pré-moldados assentados e alinhados', 'foto_se_nc': True},
+                    {'nr': 'B.4.5', 'desc': 'Tampa do poço: nivelada, sem folgas e sem danos', 'foto_se_nc': True},
+                    {'nr': 'B.4.6', 'desc': 'Superfície ao redor do poço recomposta sem afundamentos', 'foto_se_nc': True},
                 ]
             },
         ],

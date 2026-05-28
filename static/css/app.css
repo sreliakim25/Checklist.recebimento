@@ -106,6 +106,33 @@ button { font-family: inherit; }
 .painel-lateral h3 { font-size: 15px; font-weight: 700; margin-bottom: 10px; color: #1F2937; }
 .btn-novo-checklist { display: block; background: #5C1A2E; color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; text-align: center; margin-bottom: 12px; }
 .btn-novo-checklist:hover { background: #7a2540; text-decoration: none; }
+
+/* ── Painel de lote ── */
+.painel-titulo-lote { font-size: 15px; font-weight: 700; color: #1F2937; margin-bottom: 12px; }
+.lote-acoes { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.btn-acao { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; width: 100%; text-align: left; text-decoration: none; }
+.btn-acao-novo { background: #5C1A2E; color: #fff; }
+.btn-acao-novo:hover { background: #7a2540; color: #fff; text-decoration: none; }
+.btn-acao-ver { background: #fff; color: #5C1A2E; border: 2px solid #5C1A2E; }
+.btn-acao-ver:hover { background: #fdf0f3; }
+.acao-icone { font-size: 18px; line-height: 1; }
+.lote-status-badge { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid #E5E7EB; margin-bottom: 8px; }
+.status-data { font-size: 12px; color: #6B7280; }
+.lote-carregando { font-size: 13px; color: #9CA3AF; padding: 8px 0; }
+.lista-checklists-lote { margin-top: 8px; }
+
+/* ── Painel de rua ── */
+.rua-subtitulo { font-size: 12px; color: #6B7280; margin: -6px 0 8px; }
+.rua-tipos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 14px; }
+.btn-tipo-rua { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; background: #fff; color: #5C1A2E; border: 1.5px solid #5C1A2E; text-decoration: none; }
+.btn-tipo-rua:hover { background: #fdf0f3; text-decoration: none; }
+.tipo-icone { font-size: 16px; }
+.rua-grupos { margin-top: 4px; }
+.rua-grupo { margin-bottom: 12px; }
+.rua-grupo-titulo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #5C1A2E; background: #fdf0f3; padding: 3px 8px; border-radius: 4px; margin-bottom: 4px; }
+.marcador-rua rect { transition: fill-opacity .15s; }
+.marcador-rua:hover rect { fill-opacity: 1 !important; }
+.marcador-rua.selecionado rect { stroke: #FFD700 !important; stroke-width: 2 !important; }
 .lista-checklists { list-style: none; }
 .checklist-lista-item { padding: 10px 0; border-bottom: 1px solid #E5E7EB; }
 .checklist-lista-item .data { font-size: 12px; color: #6B7280; }
@@ -212,6 +239,17 @@ button { font-family: inherit; }
 .obs-geral-txt { font-size: 14px; color: #374151; line-height: 1.6; }
 .view-acoes { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
 
+/* ── Painel de configuração de empreendimento ── */
+.config-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.config-header h2 { margin: 0; }
+.btn-icon { background: none; border: 1px solid #D1D5DB; border-radius: 6px; padding: 4px 10px; font-size: 13px; cursor: pointer; color: #374151; }
+.btn-icon:hover { background: #F3F4F6; }
+.cfg-lbl { font-size: 13px; color: #6B7280; font-weight: 600; min-width: 140px; padding: 6px 0; }
+.cfg-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.cfg-input { flex: 1; min-width: 200px; border: 1px solid #D1D5DB; border-radius: 6px; padding: 8px 10px; font-size: 14px; font-family: inherit; }
+.cfg-input:focus { outline: none; border-color: #5C1A2E; box-shadow: 0 0 0 2px rgba(92,26,46,.15); }
+.cfg-acoes { display: flex; gap: 10px; margin-top: 14px; }
+
 /* ── Responsivo tablet ── */
 @media (max-width: 768px) {
   .app-header .header-inner { flex-direction: column; align-items: flex-start; padding: 10px 0; }
@@ -220,4 +258,86 @@ button { font-family: inherit; }
   .form-grid { grid-template-columns: 1fr; }
   .resultado-opcoes { flex-direction: column; }
   .dash-2col { grid-template-columns: 1fr; }
+}
+
+/* ── Mobile UX — touch optimisations ── */
+
+/* Remove 300 ms tap delay */
+button, a, .btn-status, .resultado-op, .nav-link, .nav-btn {
+  touch-action: manipulation;
+}
+
+/* Minimum 44 px touch target for nav and form buttons */
+.nav-link, .nav-btn {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.btn-primary, .btn-secondary, .btn-grande, .btn-status {
+  min-height: 44px;
+}
+
+/* Prevent text zoom on inputs/selects (iOS zooms in when font-size < 16px) */
+.form-campo input,
+.form-campo select,
+.obs-textarea,
+.obs-input,
+.local-input,
+.filtros select,
+.filtros input,
+.cfg-input {
+  font-size: 16px;
+}
+
+/* Prevent accidental text selection on interactive SVG elements */
+.clicavel, .marcador-rua {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Smooth momentum scrolling on scrollable panels */
+.mapa-area,
+.painel-lateral,
+.tabela-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Mobile (max 480 px) — small phones ── */
+@media (max-width: 480px) {
+  /* Stack dashboard cards in a single column */
+  .cards-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .card {
+    padding: 14px 10px;
+  }
+  .card-num { font-size: 28px; }
+
+  /* Bigger checklist items for fat fingers */
+  .checklist-item {
+    padding: 14px 12px;
+    margin-bottom: 10px;
+  }
+  .item-desc { font-size: 15px; }
+  .btn-status {
+    min-width: 60px;
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  /* Full-width action buttons */
+  .form-acoes {
+    flex-direction: column;
+  }
+  .form-acoes .btn-primary,
+  .form-acoes .btn-secondary {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  /* Nav wraps nicely */
+  .app-nav { gap: 4px; }
+  .nav-link { font-size: 13px; padding: 8px 10px; }
+  .nav-btn  { font-size: 13px; padding: 8px 12px; }
 }

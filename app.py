@@ -1,33 +1,43 @@
 import csv
 import io
 import os
-import sqlite3
 from datetime import datetime
 
-from flask import Flask, jsonify, render_template, request, send_file
+from flask import Flask, jsonify, render_template, request, send_file, send_from_directory
+from database.db_adapter import get_db, init_db_if_needed
 
 app = Flask(__name__)
-DB_PATH = os.path.join('database', 'checklists.db')
 FOTOS_DIR = 'fotos'
 SVG_ORIGINAL = os.path.join('..', 'Rec. Oliveiras 1.svg')
 SVG_PROCESSADO = os.path.join('static', 'svg', 'Rec_Oliveiras_1.svg')
 
+# Serverless environments (Vercel) do not support local file mutations
+_IS_SERVERLESS = bool(os.environ.get('DATABASE_URL', ''))
 
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA foreign_keys = ON')
-    return conn
+
+def get_config():
+    with get_db() as conn:
+        try:
+            rows = conn.execute('SELECT chave, valor FROM config').fetchall()
+            return {r['chave']: r['valor'] for r in rows}
+        except Exception:
+            return {}
+
+
+@app.context_processor
+def inject_config():
+    cfg = get_config()
+    return {'obra_config': cfg}
 
 
 def init_db():
-    os.makedirs('database', exist_ok=True)
-    os.makedirs(FOTOS_DIR, exist_ok=True)
-    os.makedirs(os.path.join('static', 'svg'), exist_ok=True)
-    with get_db() as conn:
-        with open(os.path.join('database', 'schema.sql')) as f:
-            conn.executescript(f.read())
-    _preprocessar_svg()
+    if not _IS_SERVERLESS:
+        os.makedirs('database', exist_ok=True)
+        os.makedirs(FOTOS_DIR, exist_ok=True)
+        os.makedirs(os.path.join('static', 'svg'), exist_ok=True)
+    init_db_if_needed()
+    if not _IS_SERVERLESS:
+        _preprocessar_svg()
 
 
 def _preprocessar_svg():
@@ -42,6 +52,26 @@ def _preprocessar_svg():
         print(f'SVG copiado para static/svg/')
     except Exception as e:
         print(f'Aviso: cópia do SVG falhou: {e}')
+
+
+# ──────────────────────────── PWA assets ────────────────────────────
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json',
+                               mimetype='application/manifest+json')
+
+
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory('static', 'sw.js',
+                               mimetype='application/javascript')
+
+
+@app.route('/offline')
+def offline():
+    return send_from_directory('static', 'offline.html',
+                               mimetype='text/html')
 
 
 # ──────────────────────────── Páginas HTML ────────────────────────────
@@ -387,7 +417,7 @@ def api_pdf(cid):
         fotos = conn.execute(
             'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
 
-    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], [dict(f) for f in fotos])
+    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], [dict(f) for f in fotos], get_config())
     tipo = c['tipo']
     quad = c['quadra'] or ''
     lot = c['lote'] or ''
@@ -435,6 +465,21 @@ def api_relatorio_csv():
         as_attachment=True,
         download_name='checklists_obra38.csv'
     )
+
+
+@app.route('/api/config', methods=['GET', 'PUT'])
+def api_config():
+    if request.method == 'GET':
+        return jsonify(get_config())
+    data = request.json or {}
+    campos_permitidos = {'nome_obra', 'numero_obra', 'construtora'}
+    with get_db() as conn:
+        for chave, valor in data.items():
+            if chave in campos_permitidos:
+                conn.execute(
+                    'INSERT OR REPLACE INTO config (chave, valor) VALUES (?,?)',
+                    (chave, valor))
+    return jsonify({'status': 'updated'})
 
 
 if __name__ == '__main__':

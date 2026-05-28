@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}Checklists — Obra 38{% endblock %}</title>
 <link rel="stylesheet" href="/static/css/app.css">
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#5C1A2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="UDE Check">
+<link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 </head>
 <body>
 <header class="app-header">
@@ -13,7 +20,7 @@
       <span class="brand-sigla">UDE</span>
       <div>
         <div class="brand-titulo">Sistema de Checklists</div>
-        <div class="brand-sub">Obra 38 — Recanto das Oliveiras</div>
+        <div class="brand-sub">Obra {{ obra_config.get('numero_obra', '—') }} — {{ obra_config.get('nome_obra', 'Empreendimento') }}</div>
       </div>
     </div>
     <nav class="app-nav">
@@ -28,7 +35,20 @@
   {% block content %}{% endblock %}
 </main>
 <footer class="app-footer">
-  Obra 38 — Recanto das Oliveiras &nbsp;|&nbsp; UDE — Viana &amp; Moura Construções
+  Obra {{ obra_config.get('numero_obra', '—') }} — {{ obra_config.get('nome_obra', 'Empreendimento') }} &nbsp;|&nbsp; UDE — {{ obra_config.get('construtora', '') }}
 </footer>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+        .then(function (reg) {
+          console.log('[SW] Registered, scope:', reg.scope);
+        })
+        .catch(function (err) {
+          console.warn('[SW] Registration failed:', err);
+        });
+    });
+  }
+</script>
 </body>
 </html>
