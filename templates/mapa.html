@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block title %}Mapa — Checklists Obra 38{% endblock %}
+{% block content %}
+<div class="mapa-layout">
+  <div class="mapa-area" id="svg-mapa">
+    {% if svg_existe %}
+      <div id="svg-container">
+        <p class="carregando-mapa">Carregando mapa…</p>
+      </div>
+    {% else %}
+      <div class="sem-mapa">
+        <p>Arquivo SVG do mapa não encontrado.</p>
+        <p>Copie <code>Rec. Oliveiras 1.svg</code> para a pasta raiz do projeto e reinicie o servidor.</p>
+        <p>O formulário ainda funciona via <a href="/checklist/novo">Novo Checklist</a>.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <aside class="painel-lateral" id="painel-lateral">
+    <button class="painel-fechar" id="painel-fechar">&times;</button>
+    <div id="painel-conteudo">
+      <p class="painel-hint">Clique em um lote, rua ou passeio no mapa.</p>
+    </div>
+  </aside>
+</div>
+
+<div class="mapa-legenda">
+  <span class="leg-item leg-aprovado">Aprovado</span>
+  <span class="leg-item leg-ressalvas">C/ Ressalvas</span>
+  <span class="leg-item leg-reprovado">Reprovado</span>
+  <span class="leg-item leg-pendente">Pendente</span>
+</div>
+
+<script>
+  const SVG_DISPONIVEL = {{ 'true' if svg_existe else 'false' }};
+</script>
+<script src="/static/js/mapa.js"></script>
+{% endblock %}

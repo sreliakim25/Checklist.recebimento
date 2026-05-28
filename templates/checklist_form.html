@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% block title %}Checklist — Obra 38{% endblock %}
+{% block content %}
+<div class="form-page" data-checklist-id="{{ checklist_id or '' }}">
+
+  <div class="form-header">
+    <a href="/mapa" class="btn-voltar">← Mapa</a>
+    <h1 id="form-titulo">Checklist de Recebimento</h1>
+  </div>
+
+  <!-- Cabeçalho de identificação -->
+  <section class="form-secao" id="secao-cabecalho">
+    <h2>Identificação</h2>
+    <div class="form-grid">
+      <div class="form-campo">
+        <label>Tipo de Checklist</label>
+        <select id="f-tipo" onchange="tipoAlterado()">
+          <option value="">— selecione —</option>
+          <option value="lote">Lote</option>
+          <option value="pavimentacao">Pavimentação</option>
+          <option value="passeio">Passeio / Boulevard</option>
+          <option value="saa">SAA — Sistema de Abastecimento de Água</option>
+          <option value="drenagem">Drenagem</option>
+          <option value="ses">SES — Esgotamento Sanitário</option>
+          <option value="guarita">Guarita</option>
+          <option value="quiosque">Quiosques</option>
+          <option value="dep_lixo">Depósito de Lixo</option>
+          <option value="deck">Deck de Piscinas</option>
+          <option value="salao">Salão de Festas</option>
+        </select>
+      </div>
+      <div class="form-campo">
+        <label>Data de Vistoria</label>
+        <input type="date" id="f-data">
+      </div>
+      <div class="form-campo">
+        <label>Responsável UDE</label>
+        <input type="text" id="f-responsavel" placeholder="Nome completo">
+      </div>
+      <div class="form-campo">
+        <label>Empresa Executora</label>
+        <input type="text" id="f-empresa" placeholder="Razão social ou nome">
+      </div>
+    </div>
+
+    <!-- Localizador dinâmico -->
+    <div id="localizador-lote" class="form-grid" style="display:none">
+      <div class="form-campo"><label>Quadra</label><input type="text" id="f-quadra" placeholder="A, B, C…"></div>
+      <div class="form-campo"><label>Lote nº</label><input type="text" id="f-lote" placeholder="Ex: 42"></div>
+    </div>
+    <div id="localizador-rua" class="form-grid" style="display:none">
+      <div class="form-campo form-campo-wide"><label>Rua / Boulevard</label><input type="text" id="f-rua" placeholder="Ex: RUA N.º 03"></div>
+      <div class="form-campo"><label>Trecho início</label><input type="text" id="f-trecho-ini" placeholder="CX 01 / Lote 10"></div>
+      <div class="form-campo"><label>Trecho fim</label><input type="text" id="f-trecho-fim" placeholder="CX 05 / Lote 20"></div>
+    </div>
+    <div id="localizador-passeio" class="form-grid" style="display:none">
+      <div class="form-campo form-campo-wide"><label>Rua / Boulevard</label><input type="text" id="f-rua-passeio" placeholder="Ex: BV N.º 01"></div>
+      <div class="form-campo"><label>Lotes atendidos</label><input type="text" id="f-lotes-atendidos" placeholder="Ex: 10 a 20"></div>
+    </div>
+
+    <button class="btn-primary btn-grande" id="btn-iniciar" onclick="iniciarChecklist()">
+      Iniciar Checklist
+    </button>
+  </section>
+
+  <!-- Progresso -->
+  <div id="barra-progresso-wrap" style="display:none">
+    <div class="progresso-label">
+      <span id="progress-txt">0 de 0 itens avaliados</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="barra-bg"><div class="barra-fill" id="progress-bar" style="width:0%"></div></div>
+  </div>
+
+  <!-- Container dos itens -->
+  <div id="itens-container"></div>
+
+  <!-- Observações gerais + resultado final -->
+  <div id="finalizacao-wrap" style="display:none">
+    <section class="form-secao">
+      <h2>Observações Gerais</h2>
+      <textarea id="obs-gerais" class="obs-textarea" rows="5" placeholder="Observações livres sobre a vistoria…"></textarea>
+    </section>
+
+    <section class="form-secao">
+      <h2>Resultado Final</h2>
+      <div class="resultado-opcoes">
+        <label class="resultado-op resultado-aprovado">
+          <input type="radio" name="resultado" value="APROVADO"> APROVADO
+        </label>
+        <label class="resultado-op resultado-ressalvas">
+          <input type="radio" name="resultado" value="APROVADO COM RESSALVAS"> APROVADO COM RESSALVAS
+        </label>
+        <label class="resultado-op resultado-reprovado">
+          <input type="radio" name="resultado" value="REPROVADO"> REPROVADO
+        </label>
+      </div>
+    </section>
+
+    <div class="form-acoes">
+      <button class="btn-secondary btn-grande" onclick="salvarRascunho()">💾 Salvar Rascunho</button>
+      <button class="btn-primary btn-grande" onclick="finalizarChecklist()">✓ Finalizar e Gerar PDF</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const TIPO_INICIAL = "{{ tipo }}";
+  const QUADRA_INICIAL = "{{ quadra }}";
+  const LOTE_INICIAL = "{{ lote }}";
+  const RUA_INICIAL = "{{ rua }}";
+  const EQUIP_INICIAL = "{{ equipamento }}";
+  const CHECKLIST_ID_INICIAL = {{ checklist_id or 'null' }};
+</script>
+<script src="/static/js/form.js"></script>
+{% endblock %}

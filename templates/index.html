@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — Checklists Obra 38{% endblock %}
+{% block content %}
+<div class="dashboard">
+  <h1 class="page-title">Dashboard</h1>
+
+  <div class="cards-grid">
+    <div class="card card-dark">
+      <div class="card-num" id="total">—</div>
+      <div class="card-lbl">Finalizados</div>
+    </div>
+    <div class="card card-green">
+      <div class="card-num" id="aprovados">—</div>
+      <div class="card-lbl">Aprovados</div>
+    </div>
+    <div class="card card-yellow">
+      <div class="card-num" id="ressalvas">—</div>
+      <div class="card-lbl">C/ Ressalvas</div>
+    </div>
+    <div class="card card-red">
+      <div class="card-num" id="reprovados">—</div>
+      <div class="card-lbl">Reprovados</div>
+    </div>
+    <div class="card card-gray">
+      <div class="card-num" id="rascunhos">—</div>
+      <div class="card-lbl">Rascunhos</div>
+    </div>
+  </div>
+
+  <div class="progresso-lotes">
+    <div class="progresso-label">
+      Lotes avaliados: <span id="lotes-pct">…</span>
+    </div>
+    <div class="barra-bg">
+      <div class="barra-fill" id="lotes-barra" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="dash-2col">
+    <div class="dash-box">
+      <h2>Por Tipo</h2>
+      <table class="table-simples" id="tabela-tipo">
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="dash-box">
+      <h2>Por Resultado</h2>
+      <div id="resultado-lista"></div>
+    </div>
+  </div>
+
+  <div class="dash-box mt16">
+    <h2>Avaliações Recentes</h2>
+    <table class="table-full">
+      <thead>
+        <tr>
+          <th>Local</th><th>Resultado</th><th>Data</th><th>Responsável</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="recentes-body"></tbody>
+    </table>
+  </div>
+
+  <div class="dash-acoes mt16">
+    <a href="/mapa" class="btn-primary">🗺 Abrir Mapa</a>
+    <a href="/relatorio" class="btn-secondary">📋 Relatório Completo</a>
+    <a href="/checklist/novo" class="btn-secondary">+ Novo Checklist</a>
+  </div>
+</div>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Relatório — Checklists Obra 38{% endblock %}
+{% block content %}
+<div class="relatorio-page">
+  <h1 class="page-title">Relatório Completo</h1>
+
+  <div class="filtros">
+    <select id="filtro-tipo" onchange="aplicarFiltros()">
+      <option value="">Todos os Tipos</option>
+      <option value="lote">Lote</option>
+      <option value="pavimentacao">Pavimentação</option>
+      <option value="passeio">Passeio</option>
+      <option value="saa">SAA</option>
+      <option value="drenagem">Drenagem</option>
+      <option value="ses">SES</option>
+      <option value="guarita">Guarita</option>
+      <option value="quiosque">Quiosques</option>
+      <option value="dep_lixo">Dep. Lixo</option>
+      <option value="deck">Deck</option>
+      <option value="salao">Salão</option>
+    </select>
+    <select id="filtro-resultado" onchange="aplicarFiltros()">
+      <option value="">Todos os Resultados</option>
+      <option value="APROVADO">Aprovado</option>
+      <option value="APROVADO COM RESSALVAS">C/ Ressalvas</option>
+      <option value="REPROVADO">Reprovado</option>
+      <option value="PENDENTE">Pendente</option>
+    </select>
+    <input type="text" id="filtro-busca" placeholder="Buscar…" oninput="aplicarFiltros()">
+    <a href="/api/relatorio/csv" class="btn-secondary">⬇ CSV</a>
+    <a href="/checklist/novo" class="btn-primary">+ Novo</a>
+  </div>
+
+  <p id="total-exibido" class="total-label"></p>
+
+  <div class="tabela-scroll">
+    <table class="table-full">
+      <thead>
+        <tr>
+          <th>ID</th><th>Tipo</th><th>Localização</th>
+          <th>Data</th><th>Responsável</th><th>Resultado</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tabela-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const LABELS_TIPO = {
+  lote:'Lote', pavimentacao:'Pavimentação', passeio:'Passeio',
+  saa:'SAA', drenagem:'Drenagem', ses:'SES',
+  guarita:'Guarita', quiosque:'Quiosques', dep_lixo:'Dep. Lixo',
+  deck:'Deck', salao:'Salão de Festas'
+};
+
+let todosChecklists = [];
+
+async function carregarTodos() {
+  const resp = await fetch('/api/checklist');
+  todosChecklists = await resp.json();
+  renderizarTabela(todosChecklists);
+}
+
+function aplicarFiltros() {
+  const tipo = document.getElementById('filtro-tipo').value;
+  const resultado = document.getElementById('filtro-resultado').value;
+  const busca = document.getElementById('filtro-busca').value.toLowerCase();
+
+  const filtrado = todosChecklists.filter(c => {
+    if (tipo && c.tipo !== tipo) return false;
+    if (resultado && c.resultado !== resultado) return false;
+    if (busca) {
+      const txt = `${c.quadra||''} ${c.lote||''} ${c.rua||''} ${c.responsavel_ude||''} ${c.equipamento||''}`.toLowerCase();
+      if (!txt.includes(busca)) return false;
+    }
+    return true;
+  });
+  renderizarTabela(filtrado);
+}
+
+function localLabel(c) {
+  if (c.quadra && c.lote) return `Q${c.quadra} — L.${c.lote}`;
+  if (c.rua) return c.rua;
+  if (c.equipamento) return c.equipamento;
+  return '—';
+}
+
+function badgeClass(r) {
+  return {'APROVADO':'green','APROVADO COM RESSALVAS':'yellow','REPROVADO':'red','PENDENTE':'gray'}[r] || 'gray';
+}
+
+function renderizarTabela(lista) {
+  const tbody = document.getElementById('tabela-body');
+  tbody.innerHTML = '';
+  document.getElementById('total-exibido').textContent = `${lista.length} registro(s)`;
+  lista.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.id}</td>
+      <td>${LABELS_TIPO[c.tipo] || c.tipo}</td>
+      <td>${localLabel(c)}</td>
+      <td>${c.data_vistoria || '—'}</td>
+      <td>${c.responsavel_ude || '—'}</td>
+      <td><span class="badge badge-${badgeClass(c.resultado)}">${c.resultado || 'PENDENTE'}</span></td>
+      <td class="acoes-col">
+        <a href="/checklist/${c.id}" class="link-acao">👁</a>
+        <a href="/checklist/${c.id}/editar" class="link-acao">✏</a>
+        <a href="/api/checklist/${c.id}/pdf" target="_blank" class="link-acao">📥</a>
+        <button onclick="excluir(${c.id})" class="link-acao btn-del">🗑</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+async function excluir(id) {
+  if (!confirm(`Excluir checklist #${id}? Esta ação não pode ser desfeita.`)) return;
+  await fetch(`/api/checklist/${id}`, { method: 'DELETE' });
+  todosChecklists = todosChecklists.filter(c => c.id !== id);
+  aplicarFiltros();
+}
+
+carregarTodos();
+</script>
+{% endblock %}

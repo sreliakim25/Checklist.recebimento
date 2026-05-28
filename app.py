@@ -1,0 +1,453 @@
+import csv
+import io
+import os
+import sqlite3
+from datetime import datetime
+
+from flask import Flask, jsonify, render_template, request, send_file
+
+app = Flask(__name__)
+DB_PATH = os.path.join('database', 'checklists.db')
+FOTOS_DIR = 'fotos'
+SVG_ORIGINAL = os.path.join('..', 'Rec. Oliveiras 1.svg')
+SVG_PROCESSADO = os.path.join('static', 'svg', 'Rec_Oliveiras_1.svg')
+
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA foreign_keys = ON')
+    return conn
+
+
+def init_db():
+    os.makedirs('database', exist_ok=True)
+    os.makedirs(FOTOS_DIR, exist_ok=True)
+    os.makedirs(os.path.join('static', 'svg'), exist_ok=True)
+    with get_db() as conn:
+        with open(os.path.join('database', 'schema.sql')) as f:
+            conn.executescript(f.read())
+    _preprocessar_svg()
+
+
+def _preprocessar_svg():
+    """Copia o SVG original sem processar — interatividade adicionada via JS no cliente."""
+    import shutil
+    caminho_src = SVG_ORIGINAL
+    if not os.path.exists(caminho_src):
+        print(f'SVG não encontrado em: {caminho_src}')
+        return
+    try:
+        shutil.copy2(caminho_src, SVG_PROCESSADO)
+        print(f'SVG copiado para static/svg/')
+    except Exception as e:
+        print(f'Aviso: cópia do SVG falhou: {e}')
+
+
+# ──────────────────────────── Páginas HTML ────────────────────────────
+
+@app.route('/')
+def dashboard():
+    return render_template('index.html')
+
+
+@app.route('/mapa')
+def mapa():
+    svg_existe = os.path.exists(SVG_PROCESSADO)
+    return render_template('mapa.html', svg_existe=svg_existe)
+
+
+@app.route('/checklist/novo')
+def checklist_novo():
+    tipo = request.args.get('tipo', '')
+    quadra = request.args.get('quadra', '')
+    lote = request.args.get('lote', '')
+    rua = request.args.get('rua', '')
+    equipamento = request.args.get('equipamento', '')
+    return render_template('checklist_form.html',
+                           tipo=tipo, quadra=quadra, lote=lote,
+                           rua=rua, equipamento=equipamento,
+                           checklist_id=None)
+
+
+@app.route('/checklist/<int:cid>')
+def checklist_view(cid):
+    return render_template('checklist_view.html', checklist_id=cid)
+
+
+@app.route('/checklist/<int:cid>/editar')
+def checklist_editar(cid):
+    return render_template('checklist_form.html', checklist_id=cid,
+                           tipo='', quadra='', lote='', rua='', equipamento='')
+
+
+@app.route('/relatorio')
+def relatorio():
+    return render_template('relatorio.html')
+
+
+# ──────────────────────────── API ────────────────────────────
+
+@app.route('/api/checklist', methods=['POST', 'GET'])
+def api_checklist():
+    if request.method == 'POST':
+        return _api_criar_checklist()
+    return _api_listar_checklists()
+
+
+def _api_listar_checklists():
+    tipo = request.args.get('tipo', '')
+    resultado = request.args.get('resultado', '')
+    where, params = [], []
+    if tipo:
+        where.append('tipo=?')
+        params.append(tipo)
+    if resultado:
+        where.append('resultado=?')
+        params.append(resultado)
+    sql = 'SELECT * FROM checklists'
+    if where:
+        sql += ' WHERE ' + ' AND '.join(where)
+    sql += ' ORDER BY criado_em DESC'
+    with get_db() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+def _api_criar_checklist():
+    from schemas.checklists import PK_ITENS, SCHEMAS
+    data = request.json
+    tipo = data.get('tipo')
+    schema = SCHEMAS.get(tipo)
+    if not schema:
+        return jsonify({'erro': f'Tipo inválido: {tipo}'}), 400
+
+    with get_db() as conn:
+        cur = conn.execute('''
+            INSERT INTO checklists (tipo, quadra, lote, rua, trecho_inicio, trecho_fim,
+                lotes_atendidos, equipamento, subequipamento,
+                responsavel_ude, empresa_executora, data_vistoria)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+        ''', (tipo, data.get('quadra'), data.get('lote'), data.get('rua'),
+              data.get('trecho_inicio'), data.get('trecho_fim'),
+              data.get('lotes_atendidos'), data.get('equipamento'),
+              data.get('subequipamento'), data.get('responsavel_ude'),
+              data.get('empresa_executora'), data.get('data_vistoria')))
+        checklist_id = cur.lastrowid
+
+        for secao in schema['secoes']:
+            for item in secao['itens']:
+                conn.execute('''
+                    INSERT INTO checklist_itens (checklist_id, secao, item_nr, descricao, requer_foto)
+                    VALUES (?,?,?,?,?)
+                ''', (checklist_id, secao['titulo'], item['nr'], item['desc'],
+                      1 if item.get('foto_se_nc') else 0))
+
+        for pk_key in schema.get('pk_itens', []):
+            if pk_key in PK_ITENS:
+                conn.execute('''
+                    INSERT INTO checklist_itens (checklist_id, secao, item_nr, descricao)
+                    VALUES (?,?,?,?)
+                ''', (checklist_id, 'Verificações UDE — Problemas Recorrentes',
+                      pk_key, PK_ITENS[pk_key]))
+
+    return jsonify({'id': checklist_id, 'status': 'created'})
+
+
+@app.route('/api/checklist/<int:cid>', methods=['GET', 'PUT', 'DELETE'])
+def api_checklist_id(cid):
+    if request.method == 'GET':
+        return _api_get_checklist(cid)
+    if request.method == 'PUT':
+        return _api_update_checklist(cid)
+    return _api_delete_checklist(cid)
+
+
+def _api_get_checklist(cid):
+    with get_db() as conn:
+        c = conn.execute('SELECT * FROM checklists WHERE id=?', (cid,)).fetchone()
+        if not c:
+            return jsonify({'erro': 'Não encontrado'}), 404
+        itens = conn.execute(
+            'SELECT * FROM checklist_itens WHERE checklist_id=? ORDER BY id', (cid,)).fetchall()
+        fotos = conn.execute(
+            'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
+    return jsonify({
+        'checklist': dict(c),
+        'itens': [dict(i) for i in itens],
+        'fotos': [dict(f) for f in fotos]
+    })
+
+
+def _api_update_checklist(cid):
+    data = request.json
+    campos = ['quadra', 'lote', 'rua', 'trecho_inicio', 'trecho_fim',
+              'lotes_atendidos', 'equipamento', 'responsavel_ude',
+              'empresa_executora', 'data_vistoria']
+    sets, vals = [], []
+    for campo in campos:
+        if campo in data:
+            sets.append(f'{campo}=?')
+            vals.append(data[campo])
+    if not sets:
+        return jsonify({'status': 'noop'})
+    sets.append("atualizado_em=datetime('now')")
+    vals.append(cid)
+    with get_db() as conn:
+        conn.execute(f'UPDATE checklists SET {", ".join(sets)} WHERE id=?', vals)
+    return jsonify({'status': 'updated'})
+
+
+def _api_delete_checklist(cid):
+    with get_db() as conn:
+        conn.execute('DELETE FROM checklists WHERE id=?', (cid,))
+    return jsonify({'status': 'deleted'})
+
+
+@app.route('/api/checklist/<int:cid>/item/<int:item_id>', methods=['PUT'])
+def api_update_item(cid, item_id):
+    data = request.json
+    with get_db() as conn:
+        conn.execute('''
+            UPDATE checklist_itens SET status=?, observacao=?, local_ref=?
+            WHERE id=? AND checklist_id=?
+        ''', (data.get('status'), data.get('observacao'), data.get('local_ref'),
+              item_id, cid))
+        conn.execute("UPDATE checklists SET atualizado_em=datetime('now') WHERE id=?", (cid,))
+    return jsonify({'status': 'updated'})
+
+
+@app.route('/api/checklist/<int:cid>/finalizar', methods=['POST'])
+def api_finalizar(cid):
+    data = request.json
+    with get_db() as conn:
+        conn.execute('''
+            UPDATE checklists SET resultado=?, observacoes_gerais=?,
+            finalizado=1, atualizado_em=datetime('now') WHERE id=?
+        ''', (data.get('resultado'), data.get('observacoes_gerais'), cid))
+    return jsonify({'status': 'finalizado'})
+
+
+@app.route('/api/foto/upload', methods=['POST'])
+def api_upload_foto():
+    checklist_id = request.form.get('checklist_id')
+    item_id = request.form.get('item_id')
+    file = request.files.get('file')
+    if not file or not checklist_id:
+        return jsonify({'erro': 'Arquivo ou checklist_id ausente'}), 400
+
+    pasta = os.path.join(FOTOS_DIR, str(checklist_id))
+    os.makedirs(pasta, exist_ok=True)
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
+    nome = f"{item_id or 'geral'}_{ts}.jpg"
+    caminho_abs = os.path.join(pasta, nome)
+    file.save(caminho_abs)
+    caminho_rel = os.path.join(str(checklist_id), nome)
+
+    with get_db() as conn:
+        cur = conn.execute(
+            'INSERT INTO fotos (checklist_id, item_id, caminho) VALUES (?,?,?)',
+            (checklist_id, item_id or None, caminho_rel))
+        foto_id = cur.lastrowid
+
+    return jsonify({'foto_id': foto_id, 'caminho': caminho_rel})
+
+
+@app.route('/api/foto/<int:foto_id>', methods=['DELETE'])
+def api_delete_foto(foto_id):
+    with get_db() as conn:
+        row = conn.execute('SELECT caminho FROM fotos WHERE id=?', (foto_id,)).fetchone()
+        if row:
+            caminho_abs = os.path.join(FOTOS_DIR, row['caminho'])
+            if os.path.exists(caminho_abs):
+                os.remove(caminho_abs)
+        conn.execute('DELETE FROM fotos WHERE id=?', (foto_id,))
+    return jsonify({'status': 'deleted'})
+
+
+@app.route('/fotos/<path:filename>')
+def servir_foto(filename):
+    return send_file(os.path.join(FOTOS_DIR, filename))
+
+
+@app.route('/api/mapa/status')
+def api_mapa_status():
+    tipo = request.args.get('tipo')
+    quadra = request.args.get('quadra')
+    lote = request.args.get('lote')
+    rua = request.args.get('rua')
+    equipamento = request.args.get('equipamento')
+
+    with get_db() as conn:
+        if tipo or quadra or lote or rua or equipamento:
+            where, params = [], []
+            if tipo:
+                where.append('tipo=?')
+                params.append(tipo)
+            if quadra:
+                where.append('quadra=?')
+                params.append(quadra)
+            if lote:
+                where.append('lote=?')
+                params.append(lote)
+            if rua:
+                where.append('rua=?')
+                params.append(rua)
+            if equipamento:
+                where.append('equipamento=?')
+                params.append(equipamento)
+            sql = 'SELECT id,tipo,resultado,data_vistoria,responsavel_ude,finalizado FROM checklists'
+            if where:
+                sql += ' WHERE ' + ' AND '.join(where)
+            sql += ' ORDER BY criado_em DESC'
+            rows = conn.execute(sql, params).fetchall()
+            return jsonify({'checklists': [dict(r) for r in rows]})
+
+        lotes = conn.execute('''
+            SELECT quadra, lote, resultado
+            FROM checklists WHERE tipo='lote' AND finalizado=1
+            GROUP BY quadra, lote
+            HAVING MAX(CASE resultado WHEN 'REPROVADO' THEN 1
+                                       WHEN 'APROVADO COM RESSALVAS' THEN 2
+                                       WHEN 'APROVADO' THEN 3 ELSE 0 END)
+        ''').fetchall()
+        ruas_rows = conn.execute('''
+            SELECT rua, resultado FROM checklists
+            WHERE tipo IN ('pavimentacao','passeio','saa','drenagem','ses') AND finalizado=1
+        ''').fetchall()
+        equip = conn.execute('''
+            SELECT tipo, equipamento, resultado FROM checklists
+            WHERE tipo IN ('guarita','quiosque','dep_lixo','deck','salao') AND finalizado=1
+        ''').fetchall()
+
+    return jsonify({
+        'lotes': [dict(r) for r in lotes],
+        'ruas': [dict(r) for r in ruas_rows],
+        'equipamentos': [dict(r) for r in equip]
+    })
+
+
+@app.route('/api/dashboard')
+def api_dashboard():
+    with get_db() as conn:
+        total = conn.execute(
+            'SELECT COUNT(*) FROM checklists WHERE finalizado=1').fetchone()[0]
+        por_resultado = conn.execute('''
+            SELECT resultado, COUNT(*) as qtd FROM checklists
+            WHERE finalizado=1 GROUP BY resultado
+        ''').fetchall()
+        por_tipo = conn.execute('''
+            SELECT tipo, COUNT(*) as qtd FROM checklists
+            WHERE finalizado=1 GROUP BY tipo ORDER BY qtd DESC
+        ''').fetchall()
+        recentes = conn.execute('''
+            SELECT id, tipo, resultado, data_vistoria,
+                   quadra, lote, rua, equipamento, responsavel_ude
+            FROM checklists WHERE finalizado=1
+            ORDER BY atualizado_em DESC LIMIT 10
+        ''').fetchall()
+        lotes_avaliados = conn.execute(
+            "SELECT COUNT(DISTINCT quadra||'-'||lote) FROM checklists "
+            "WHERE tipo='lote' AND finalizado=1").fetchone()[0]
+        rascunhos = conn.execute(
+            'SELECT COUNT(*) FROM checklists WHERE finalizado=0').fetchone()[0]
+        total_geral = conn.execute('SELECT COUNT(*) FROM checklists').fetchone()[0]
+
+    return jsonify({
+        'total': total,
+        'total_geral': total_geral,
+        'por_resultado': {r['resultado']: r['qtd'] for r in por_resultado},
+        'por_tipo': [{'tipo': r['tipo'], 'qtd': r['qtd']} for r in por_tipo],
+        'recentes': [dict(r) for r in recentes],
+        'lotes_avaliados': lotes_avaliados,
+        'lotes_total': 505,
+        'rascunhos': rascunhos
+    })
+
+
+@app.route('/api/schema/<tipo>')
+def api_schema(tipo):
+    from schemas.checklists import PK_ITENS, SCHEMAS
+    schema = SCHEMAS.get(tipo)
+    if not schema:
+        return jsonify({'erro': 'Tipo inválido'}), 404
+    pk = {k: PK_ITENS[k] for k in schema.get('pk_itens', []) if k in PK_ITENS}
+    return jsonify({**schema, 'pk_itens_dados': pk})
+
+
+@app.route('/api/checklist/<int:cid>/pdf')
+def api_pdf(cid):
+    from pdf.exportar import gerar_pdf
+    with get_db() as conn:
+        c = conn.execute('SELECT * FROM checklists WHERE id=?', (cid,)).fetchone()
+        if not c:
+            return jsonify({'erro': 'Não encontrado'}), 404
+        itens = conn.execute(
+            'SELECT * FROM checklist_itens WHERE checklist_id=? ORDER BY id', (cid,)).fetchall()
+        fotos = conn.execute(
+            'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
+
+    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], [dict(f) for f in fotos])
+    tipo = c['tipo']
+    quad = c['quadra'] or ''
+    lot = c['lote'] or ''
+    rua = (c['rua'] or '').replace(' ', '_').replace('.', '').replace('º', '')
+    data = (c['data_vistoria'] or datetime.now().strftime('%Y-%m-%d'))
+
+    if quad and lot:
+        nome = f'Checklist_{tipo}_{quad}-{lot}_{data}.pdf'
+    elif rua:
+        nome = f'Checklist_{tipo}_{rua}_{data}.pdf'
+    elif c['equipamento']:
+        eq = (c['equipamento'] or '').replace(' ', '_')
+        nome = f'Checklist_{tipo}_{eq}_{data}.pdf'
+    else:
+        nome = f'Checklist_{tipo}_{data}.pdf'
+
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=nome
+    )
+
+
+@app.route('/api/relatorio/csv')
+def api_relatorio_csv():
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT id, tipo, quadra, lote, rua, trecho_inicio, trecho_fim,
+                   equipamento, responsavel_ude, empresa_executora,
+                   data_vistoria, resultado, observacoes_gerais,
+                   finalizado, criado_em, atualizado_em
+            FROM checklists ORDER BY criado_em DESC
+        ''').fetchall()
+
+    output = io.StringIO()
+    if rows:
+        w = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        w.writerows([dict(r) for r in rows])
+    output.seek(0)
+    return send_file(
+        io.BytesIO(output.getvalue().encode('utf-8-sig')),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='checklists_obra38.csv'
+    )
+
+
+if __name__ == '__main__':
+    init_db()
+    import socket
+    porta = 5000
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        if s.connect_ex(('localhost', 5000)) == 0:
+            porta = 5001
+            print('AVISO: Porta 5000 ocupada (AirPlay Receiver?). Usando porta 5001.')
+            print('Dica: desabilite "AirPlay Receiver" em Ajustes > Geral > AirDrop para usar 5000.')
+    print('=' * 55)
+    print(' Sistema de Checklists — Obra 38 — Recanto das Oliveiras')
+    print(f' Acesse: http://localhost:{porta}')
+    print('=' * 55)
+    app.run(host='0.0.0.0', port=porta, debug=False)

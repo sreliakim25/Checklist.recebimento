@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}Ver Checklist — Obra 38{% endblock %}
+{% block content %}
+<div class="view-page" id="view-page">
+  <div class="form-header">
+    <a href="/relatorio" class="btn-voltar">← Relatório</a>
+    <h1 id="view-titulo">Carregando…</h1>
+  </div>
+
+  <div id="view-info" class="view-info"></div>
+  <div id="view-badge" class="view-badge-wrap"></div>
+  <div id="view-itens"></div>
+
+  <div class="view-acoes" id="view-acoes" style="display:none">
+    <a id="btn-editar" href="#" class="btn-secondary btn-grande">✏ Editar</a>
+    <a id="btn-pdf" href="#" target="_blank" class="btn-primary btn-grande">📥 Baixar PDF</a>
+  </div>
+</div>
+
+<script>
+const CID = {{ checklist_id }};
+
+const LABELS_TIPO = {
+  lote:'Lote', pavimentacao:'Pavimentação', passeio:'Passeio',
+  saa:'SAA', drenagem:'Drenagem', ses:'SES',
+  guarita:'Guarita', quiosque:'Quiosques', dep_lixo:'Dep. Lixo',
+  deck:'Deck', salao:'Salão de Festas'
+};
+
+async function carregarView() {
+  const resp = await fetch(`/api/checklist/${CID}`);
+  if (!resp.ok) { document.getElementById('view-titulo').textContent='Não encontrado'; return; }
+  const d = await resp.json();
+  const c = d.checklist;
+
+  document.getElementById('view-titulo').textContent =
+    (LABELS_TIPO[c.tipo] || c.tipo) + ' — ' + localLabel(c);
+
+  const info = document.getElementById('view-info');
+  info.innerHTML = `
+    <div class="info-grid">
+      <div><b>Data:</b> ${c.data_vistoria || '—'}</div>
+      <div><b>Responsável:</b> ${c.responsavel_ude || '—'}</div>
+      <div><b>Empresa:</b> ${c.empresa_executora || '—'}</div>
+      <div><b>Finalizado:</b> ${c.finalizado ? 'Sim' : 'Não (rascunho)'}</div>
+    </div>`;
+
+  const badge = document.getElementById('view-badge');
+  if (c.resultado) {
+    badge.innerHTML = `<span class="badge badge-${badgeClass(c.resultado)} badge-lg">${c.resultado}</span>`;
+  }
+
+  // Itens por seção
+  const secoes = {};
+  d.itens.forEach(it => {
+    if (!secoes[it.secao]) secoes[it.secao] = [];
+    secoes[it.secao].push(it);
+  });
+  const fotosPorItem = {};
+  d.fotos.forEach(f => {
+    if (f.item_id) {
+      if (!fotosPorItem[f.item_id]) fotosPorItem[f.item_id] = [];
+      fotosPorItem[f.item_id].push(f);
+    }
+  });
+
+  const container = document.getElementById('view-itens');
+  for (const [secao, itens] of Object.entries(secoes)) {
+    const div = document.createElement('div');
+    div.className = 'view-secao';
+    div.innerHTML = `<h3 class="secao-titulo">${secao}</h3>`;
+    itens.forEach(it => {
+      const s = it.status || 'NA';
+      const fotos = fotosPorItem[it.id] || [];
+      let fotosHtml = fotos.map(f =>
+        `<a href="/fotos/${f.caminho}" target="_blank">
+           <img src="/fotos/${f.caminho}" class="miniatura-foto">
+         </a>`).join('');
+      div.innerHTML += `
+        <div class="checklist-item view-item status-${s.toLowerCase()}">
+          <div class="item-topo">
+            <span class="item-nr">${it.item_nr}</span>
+            <span class="item-desc">${it.descricao}</span>
+            <span class="status-badge status-${s.toLowerCase()}">${s}</span>
+          </div>
+          ${it.observacao ? `<div class="item-obs">Obs: ${it.observacao}</div>` : ''}
+          ${fotosHtml ? `<div class="fotos-container">${fotosHtml}</div>` : ''}
+        </div>`;
+    });
+    container.appendChild(div);
+  }
+
+  if (c.observacoes_gerais) {
+    const obs = document.createElement('div');
+    obs.className = 'view-secao';
+    obs.innerHTML = `<h3 class="secao-titulo">Observações Gerais</h3>
+      <p class="obs-geral-txt">${c.observacoes_gerais}</p>`;
+    container.appendChild(obs);
+  }
+
+  document.getElementById('btn-editar').href = `/checklist/${CID}/editar`;
+  document.getElementById('btn-pdf').href = `/api/checklist/${CID}/pdf`;
+  document.getElementById('view-acoes').style.display = '';
+}
+
+function localLabel(c) {
+  if (c.quadra && c.lote) return `Quadra ${c.quadra} — Lote ${c.lote}`;
+  if (c.rua) return c.rua;
+  if (c.equipamento) return c.equipamento;
+  return '';
+}
+
+function badgeClass(r) {
+  return {
+    'APROVADO':'green','APROVADO COM RESSALVAS':'yellow',
+    'REPROVADO':'red','PENDENTE':'gray'
+  }[r] || 'gray';
+}
+
+carregarView();
+</script>
+{% endblock %}
