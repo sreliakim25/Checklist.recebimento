@@ -13,9 +13,13 @@ import sqlite3
 # Detect environment
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 USE_POSTGRES = bool(DATABASE_URL)
+_IS_VERCEL   = bool(os.environ.get('VERCEL'))
 
-# ── SQLite path (local) ───────────────────────────────────────────────────────
-_SQLITE_PATH = os.path.join(os.path.dirname(__file__), 'checklists.db')
+# SQLite path: /tmp on Vercel (read-only bundle), local database/ otherwise
+if _IS_VERCEL and not USE_POSTGRES:
+    _SQLITE_PATH = '/tmp/checklists.db'
+else:
+    _SQLITE_PATH = os.path.join(os.path.dirname(__file__), 'checklists.db')
 
 
 # ── PostgreSQL connection wrapper ─────────────────────────────────────────────
@@ -163,7 +167,9 @@ def init_db_if_needed():
     if USE_POSTGRES:
         schema_file = os.path.join(schema_dir, 'schema_pg.sql')
     else:
-        os.makedirs(schema_dir, exist_ok=True)
+        # Only try to create the directory when NOT in a read-only bundle (Vercel)
+        if not _IS_VERCEL:
+            os.makedirs(schema_dir, exist_ok=True)
         schema_file = os.path.join(schema_dir, 'schema.sql')
 
     with get_db() as conn:

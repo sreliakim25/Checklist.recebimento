@@ -7,12 +7,15 @@ from flask import Flask, jsonify, render_template, request, send_file, send_from
 from database.db_adapter import get_db, init_db_if_needed
 
 app = Flask(__name__)
-FOTOS_DIR = 'fotos'
+
+# Vercel sets VERCEL=1 automatically; DATABASE_URL is set manually for Postgres
+_IS_VERCEL = bool(os.environ.get('VERCEL'))
+_HAS_POSTGRES = bool(os.environ.get('DATABASE_URL', ''))
+_IS_SERVERLESS = _IS_VERCEL or _HAS_POSTGRES
+
+FOTOS_DIR = '/tmp/fotos' if _IS_VERCEL else 'fotos'
 SVG_ORIGINAL = os.path.join('..', 'Rec. Oliveiras 1.svg')
 SVG_PROCESSADO = os.path.join('static', 'svg', 'Rec_Oliveiras_1.svg')
-
-# Serverless environments (Vercel) do not support local file mutations
-_IS_SERVERLESS = bool(os.environ.get('DATABASE_URL', ''))
 
 
 def get_config():
@@ -31,7 +34,10 @@ def inject_config():
 
 
 def init_db():
-    if not _IS_SERVERLESS:
+    if _IS_SERVERLESS:
+        # On Vercel: only /tmp is writable
+        os.makedirs(FOTOS_DIR, exist_ok=True)
+    else:
         os.makedirs('database', exist_ok=True)
         os.makedirs(FOTOS_DIR, exist_ok=True)
         os.makedirs(os.path.join('static', 'svg'), exist_ok=True)
@@ -482,8 +488,15 @@ def api_config():
     return jsonify({'status': 'updated'})
 
 
-if __name__ == '__main__':
+# Inicializa banco ao importar o módulo (necessário para Vercel que não executa __main__)
+try:
     init_db()
+except Exception as _init_err:
+    print(f'[init_db] aviso: {_init_err}')
+
+
+if __name__ == '__main__':
+    pass  # init_db já foi chamado acima
     import socket
     porta = 5000
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
