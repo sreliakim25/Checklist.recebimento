@@ -83,11 +83,19 @@ button { font-family: inherit; }
 
 /* ── Mapa ── */
 .mapa-layout { display: flex; gap: 0; height: calc(100vh - 130px); position: relative; }
-.mapa-area { flex: 1; overflow: auto; background: #fff; border-radius: 10px; padding: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.mapa-area { flex: 1; overflow: hidden; position: relative; background: #fff; border-radius: 10px; padding: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+#svg-viewport { width: 100%; height: 100%; overflow: hidden; position: relative; }
+#svg-container { width: 100%; transform-origin: 0 0; will-change: transform; cursor: grab; user-select: none; -webkit-user-select: none; }
+#svg-container.grabbing { cursor: grabbing; }
 .mapa-area svg { width: 100%; height: auto; display: block; }
-#svg-container { width: 100%; }
 .carregando-mapa { color: #6B7280; padding: 40px; font-size: 14px; text-align: center; }
 .sem-mapa { padding: 40px; text-align: center; color: #6B7280; font-size: 15px; line-height: 2; }
+
+/* Controles de zoom */
+.zoom-controls { position: absolute; top: 14px; right: 14px; z-index: 20; display: flex; flex-direction: column; gap: 4px; }
+.btn-zoom { width: 36px; height: 36px; background: #fff; border: 1.5px solid #D1D5DB; border-radius: 8px; font-size: 17px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0,0,0,.15); color: #374151; line-height: 1; padding: 0; touch-action: manipulation; }
+.btn-zoom:hover { background: #F3F4F6; border-color: #9CA3AF; }
+.btn-zoom:active { background: #E5E7EB; }
 
 /* SVG status colors */
 [data-resultado="APROVADO"]               { fill: #22c55e !important; fill-opacity: 0.55; }
@@ -250,10 +258,14 @@ button { font-family: inherit; }
 .cfg-input:focus { outline: none; border-color: #5C1A2E; box-shadow: 0 0 0 2px rgba(92,26,46,.15); }
 .cfg-acoes { display: flex; gap: 10px; margin-top: 14px; }
 
+/* Fotos gerais (obs finais) */
+.fotos-gerais-area { margin-top: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
 /* ── Responsivo tablet ── */
 @media (max-width: 768px) {
   .app-header .header-inner { flex-direction: column; align-items: flex-start; padding: 10px 0; }
   .mapa-layout { flex-direction: column; height: auto; }
+  .mapa-area { height: 72vh; min-height: 320px; }
   .painel-lateral.aberto { width: 100%; border-radius: 10px; margin-top: 12px; }
   .form-grid { grid-template-columns: 1fr; }
   .resultado-opcoes { flex-direction: column; }

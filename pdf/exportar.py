@@ -350,7 +350,7 @@ def _registro_fotografico(itens_ordenados, fotos_por_item, fotos_gerais, estilos
     return elementos
 
 
-def _obs_gerais(obs_texto, estilos, cor_h):
+def _obs_gerais(obs_texto, fotos_gerais, estilos, cor_h):
     p_hdr = Paragraph('OBSERVAÇÕES GERAIS', estilos['sec'])
     tbl_hdr = Table([[p_hdr]], colWidths=[TABLE_W])
     tbl_hdr.setStyle(TableStyle([
@@ -369,7 +369,11 @@ def _obs_gerais(obs_texto, estilos, cor_h):
         ('BOTTOMPADDING', (0, 0), (-1, -1), int(linhas_obs * 9)),
         ('LEFTPADDING', (0, 0), (-1, -1), 6),
     ]))
-    return [tbl_hdr, tbl_obs]
+    elementos = [tbl_hdr, tbl_obs]
+    if fotos_gerais:
+        elementos.append(Spacer(1, 0.25 * cm))
+        elementos.extend(_miniaturas_inline(fotos_gerais))
+    return elementos
 
 
 def _resultado_assinaturas(resultado, estilos, cor_h):
@@ -468,7 +472,7 @@ def gerar_pdf(checklist: dict, itens: list, fotos: list, config: dict = None) ->
         story.extend(_secao(secao_nome, secao_itens, fotos_por_item, estilos, cor_h, cor_s))
         story.append(Spacer(1, 0.3 * cm))
 
-    story.extend(_obs_gerais(checklist.get('observacoes_gerais', ''), estilos, cor_h))
+    story.extend(_obs_gerais(checklist.get('observacoes_gerais', ''), fotos_gerais, estilos, cor_h))
     story.append(Spacer(1, 0.3 * cm))
     story.extend(_resultado_assinaturas(checklist.get('resultado', ''), estilos, cor_h))
 

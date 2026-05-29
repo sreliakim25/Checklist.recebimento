@@ -128,6 +128,9 @@ async function renderizarFormulario(tipo) {
     });
     container.appendChild(secaoDiv);
   }
+
+  // Fotos gerais (sem item vinculado)
+  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho));
 }
 
 function criarItemEl(item, fotos) {
@@ -211,6 +214,9 @@ async function carregarChecklistExistente(cid) {
   if (c.observacoes_gerais) {
     document.getElementById('obs-gerais').value = c.observacoes_gerais;
   }
+
+  // Fotos gerais (sem item vinculado)
+  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho));
 
   atualizarProgressBar();
 }
@@ -321,4 +327,44 @@ async function finalizarChecklist() {
   if (resp.ok) {
     window.location.href = `/api/checklist/${CHECKLIST_ID}/pdf`;
   }
+}
+
+function abrirCameraGeral() {
+  if (!CHECKLIST_ID) return;
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.onchange = async function () {
+    const file = this.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('checklist_id', CHECKLIST_ID);
+    // sem item_id → foto geral das observações
+    const resp = await fetch('/api/foto/upload', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.foto_id) {
+      adicionarMiniaturaGeral(data.foto_id, data.caminho);
+    }
+  };
+  input.click();
+}
+
+function adicionarMiniaturaGeral(fotoId, caminho) {
+  const container = document.getElementById('fotos-gerais-container');
+  if (!container) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'foto-wrap';
+  wrap.id = `foto-geral-${fotoId}`;
+  wrap.innerHTML = `
+    <img src="/fotos/${caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
+    <button class="btn-del-foto" onclick="deletarFotoGeral(${fotoId})">×</button>`;
+  container.appendChild(wrap);
+}
+
+async function deletarFotoGeral(fotoId) {
+  await fetch(`/api/foto/${fotoId}`, { method: 'DELETE' });
+  const el = document.getElementById(`foto-geral-${fotoId}`);
+  if (el) el.remove();
 }

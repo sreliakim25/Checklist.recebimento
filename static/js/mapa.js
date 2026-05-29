@@ -26,6 +26,7 @@ const TIPOS_RUA = [
 
 let SVG_EL = null;
 const loteMap = {};  // svgId → { nr, quadra }
+let _zoomTouchMoved = false;  // flag para distinguir tap de pan no mapa
 
 document.addEventListener('DOMContentLoaded', async function () {
   if (!SVG_DISPONIVEL) return;
@@ -39,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   construirMapaRuas(SVG_EL);  // rua markers ficam por cima de tudo
   registrarEventosMapa();
   registrarFechaPanel();
+  inicializarZoom();
 });
 
 // ── Carrega o SVG via fetch + DOMParser ──
@@ -348,6 +350,7 @@ function _criarMarcador(svgEl, eq, tx, ty) {
 function registrarEventosMapa() {
   const area = document.getElementById('svg-mapa');
   area.addEventListener('click', async function (e) {
+    if (_zoomTouchMoved) { _zoomTouchMoved = false; return; }
     const el = e.target.closest('.clicavel');
     if (!el) return;
 
@@ -564,4 +567,146 @@ function badgeHtml(resultado) {
     'PENDENTE': '#94a3b8'
   };
   return `<span class="badge" style="background:${cores[resultado] || '#94a3b8'}">${resultado || 'PENDENTE'}</span>`;
+}
+
+// ── Zoom e Pan do mapa (pinch-to-zoom mobile + mouse wheel desktop) ──
+function inicializarZoom() {
+  const viewport = document.getElementById('svg-viewport');
+  const container = document.getElementById('svg-container');
+  if (!viewport || !container) return;
+
+  let scale = 1, tx = 0, ty = 0;
+  const MIN_SCALE = 1, MAX_SCALE = 12;
+
+  function applyTransform() {
+    container.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  }
+
+  function clampTx(v) {
+    if (scale <= 1) return 0;
+    const vw = viewport.clientWidth;
+    const cw = container.offsetWidth * scale;
+    return Math.max(Math.min(vw * 0.1, v), vw * 0.9 - cw);
+  }
+
+  function clampTy(v) {
+    if (scale <= 1) return 0;
+    const vh = viewport.clientHeight;
+    const ch = container.offsetHeight * scale;
+    return Math.max(Math.min(vh * 0.1, v), vh * 0.9 - ch);
+  }
+
+  function zoomAt(factor, pivotX, pivotY) {
+    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor));
+    if (newScale === scale) return;
+    const ratio = newScale / scale;
+    tx = pivotX - ratio * (pivotX - tx);
+    ty = pivotY - ratio * (pivotY - ty);
+    scale = newScale;
+    if (scale <= 1) { scale = 1; tx = 0; ty = 0; }
+    else { tx = clampTx(tx); ty = clampTy(ty); }
+    applyTransform();
+  }
+
+  // Botões de controle
+  document.getElementById('btn-zoom-in')?.addEventListener('click', e => {
+    e.stopPropagation();
+    const r = viewport.getBoundingClientRect();
+    zoomAt(1.6, r.width / 2, r.height / 2);
+  });
+  document.getElementById('btn-zoom-out')?.addEventListener('click', e => {
+    e.stopPropagation();
+    const r = viewport.getBoundingClientRect();
+    zoomAt(1 / 1.6, r.width / 2, r.height / 2);
+  });
+  document.getElementById('btn-zoom-reset')?.addEventListener('click', e => {
+    e.stopPropagation();
+    scale = 1; tx = 0; ty = 0; applyTransform();
+  });
+
+  // Mouse wheel (desktop)
+  viewport.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = viewport.getBoundingClientRect();
+    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
+  // Mouse drag (desktop)
+  let mdDown = false, mdX = 0, mdY = 0, mdTx = 0, mdTy = 0, mdMoved = false;
+  viewport.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    mdDown = true; mdMoved = false;
+    mdX = e.clientX; mdY = e.clientY; mdTx = tx; mdTy = ty;
+    container.classList.add('grabbing');
+  });
+  window.addEventListener('mousemove', e => {
+    if (!mdDown) return;
+    const dx = e.clientX - mdX, dy = e.clientY - mdY;
+    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) mdMoved = true;
+    if (scale > 1 && mdMoved) {
+      tx = clampTx(mdTx + dx);
+      ty = clampTy(mdTy + dy);
+      applyTransform();
+    }
+  });
+  window.addEventListener('mouseup', () => {
+    mdDown = false;
+    container.classList.remove('grabbing');
+  });
+
+  // Touch pinch-to-zoom + pan (mobile)
+  let t0Arr = [], initScaleT = 1, initDistT = 0;
+  let initTxT = 0, initTyT = 0, initMidX = 0, initMidY = 0;
+  let touchMoveCount = 0;
+
+  viewport.addEventListener('touchstart', e => {
+    _zoomTouchMoved = false;
+    touchMoveCount = 0;
+    t0Arr = Array.from(e.touches).map(t => ({ id: t.identifier, x: t.clientX, y: t.clientY }));
+    initScaleT = scale; initTxT = tx; initTyT = ty;
+    if (e.touches.length === 2) {
+      initDistT = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const r = viewport.getBoundingClientRect();
+      initMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+      initMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+    }
+  }, { passive: true });
+
+  viewport.addEventListener('touchmove', e => {
+    touchMoveCount++;
+    if (touchMoveCount > 2) _zoomTouchMoved = true;
+
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const r = viewport.getBoundingClientRect();
+      const curMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
+      const curMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, initScaleT * dist / initDistT));
+      const ratio = newScale / initScaleT;
+      // Zoom centrado no ponto de pinça + pan simultâneo
+      tx = initMidX - ratio * (initMidX - initTxT) + (curMidX - initMidX);
+      ty = initMidY - ratio * (initMidY - initTyT) + (curMidY - initMidY);
+      scale = newScale;
+      if (scale <= 1) { scale = 1; tx = 0; ty = 0; }
+      else { tx = clampTx(tx); ty = clampTy(ty); }
+      applyTransform();
+    } else if (e.touches.length === 1 && scale > 1) {
+      e.preventDefault();
+      const t0 = t0Arr.find(t => t.id === e.touches[0].identifier);
+      if (t0) {
+        tx = clampTx(initTxT + (e.touches[0].clientX - t0.x));
+        ty = clampTy(initTyT + (e.touches[0].clientY - t0.y));
+        applyTransform();
+      }
+    }
+  }, { passive: false });
+
+  viewport.addEventListener('touchend', () => { t0Arr = []; }, { passive: true });
 }

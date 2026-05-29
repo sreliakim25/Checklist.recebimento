@@ -4,8 +4,15 @@
 <div class="mapa-layout">
   <div class="mapa-area" id="svg-mapa">
     {% if svg_existe %}
-      <div id="svg-container">
-        <p class="carregando-mapa">Carregando mapa…</p>
+      <div class="zoom-controls" id="zoom-controls">
+        <button class="btn-zoom" id="btn-zoom-in" title="Aproximar">＋</button>
+        <button class="btn-zoom" id="btn-zoom-out" title="Afastar">－</button>
+        <button class="btn-zoom" id="btn-zoom-reset" title="Redefinir">⊡</button>
+      </div>
+      <div id="svg-viewport">
+        <div id="svg-container">
+          <p class="carregando-mapa">Carregando mapa…</p>
+        </div>
       </div>
     {% else %}
       <div class="sem-mapa">
