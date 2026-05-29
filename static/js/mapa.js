@@ -569,144 +569,176 @@ function badgeHtml(resultado) {
   return `<span class="badge" style="background:${cores[resultado] || '#94a3b8'}">${resultado || 'PENDENTE'}</span>`;
 }
 
-// ── Zoom e Pan do mapa (pinch-to-zoom mobile + mouse wheel desktop) ──
+// ── Zoom e Pan do mapa via viewBox — renderiza nítido em qualquer zoom ──
 function inicializarZoom() {
   const viewport = document.getElementById('svg-viewport');
   const container = document.getElementById('svg-container');
-  if (!viewport || !container) return;
+  if (!viewport || !SVG_EL) return;
 
-  let scale = 1, tx = 0, ty = 0;
-  const MIN_SCALE = 1, MAX_SCALE = 12;
+  const svg = SVG_EL;
+  const vb0 = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+  if (vb0.length < 4) return;
 
-  function applyTransform() {
-    container.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  const [ox, oy, ow, oh] = vb0;
+  let vx = ox, vy = oy, vw = ow, vh = oh;
+  const MAX_ZOOM = 12;  // viewBox pode encolher até 1/12 do original
+
+  function applyVB() {
+    svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
   }
 
-  function clampTx(v) {
-    if (scale <= 1) return 0;
-    const vw = viewport.clientWidth;
-    const cw = container.offsetWidth * scale;
-    return Math.max(Math.min(vw * 0.1, v), vw * 0.9 - cw);
+  function clamp() {
+    vx = Math.max(ox, Math.min(ox + ow - vw, vx));
+    vy = Math.max(oy, Math.min(oy + oh - vh, vy));
   }
 
-  function clampTy(v) {
-    if (scale <= 1) return 0;
-    const vh = viewport.clientHeight;
-    const ch = container.offsetHeight * scale;
-    return Math.max(Math.min(vh * 0.1, v), vh * 0.9 - ch);
+  // Converte coordenada de client (px) para coordenada SVG aproximada
+  function c2s(clientX, clientY) {
+    const r = viewport.getBoundingClientRect();
+    return {
+      x: vx + (clientX - r.left) / r.width  * vw,
+      y: vy + (clientY - r.top)  / r.height * vh,
+    };
   }
 
-  function zoomAt(factor, pivotX, pivotY) {
-    const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor));
-    if (newScale === scale) return;
-    const ratio = newScale / scale;
-    tx = pivotX - ratio * (pivotX - tx);
-    ty = pivotY - ratio * (pivotY - ty);
-    scale = newScale;
-    if (scale <= 1) { scale = 1; tx = 0; ty = 0; }
-    else { tx = clampTx(tx); ty = clampTy(ty); }
-    applyTransform();
+  // Zoom centrado em (clientX, clientY); factor > 1 = aproximar
+  function zoomAt(factor, clientX, clientY) {
+    const p = c2s(clientX, clientY);
+    const newVw = Math.max(ow / MAX_ZOOM, Math.min(ow, vw / factor));
+    const ratio = newVw / vw;
+    vx = p.x - ratio * (p.x - vx);
+    vy = p.y - ratio * (p.y - vy);
+    vw = newVw;
+    vh = oh * (vw / ow);
+    if (vw >= ow * 0.99) { vw = ow; vh = oh; vx = ox; vy = oy; }
+    else clamp();
+    applyVB();
   }
 
-  // Botões de controle
+  function panByPx(dxPx, dyPx) {
+    if (vw >= ow * 0.99) return;
+    const r = viewport.getBoundingClientRect();
+    vx -= dxPx / r.width  * vw;
+    vy -= dyPx / r.height * vh;
+    clamp();
+    applyVB();
+  }
+
+  // ── Botões ──
   document.getElementById('btn-zoom-in')?.addEventListener('click', e => {
     e.stopPropagation();
     const r = viewport.getBoundingClientRect();
-    zoomAt(1.6, r.width / 2, r.height / 2);
+    zoomAt(1.8, r.left + r.width / 2, r.top + r.height / 2);
   });
   document.getElementById('btn-zoom-out')?.addEventListener('click', e => {
     e.stopPropagation();
     const r = viewport.getBoundingClientRect();
-    zoomAt(1 / 1.6, r.width / 2, r.height / 2);
+    zoomAt(1 / 1.8, r.left + r.width / 2, r.top + r.height / 2);
   });
   document.getElementById('btn-zoom-reset')?.addEventListener('click', e => {
     e.stopPropagation();
-    scale = 1; tx = 0; ty = 0; applyTransform();
+    vw = ow; vh = oh; vx = ox; vy = oy; applyVB();
   });
 
-  // Mouse wheel (desktop)
+  // ── Mouse wheel (desktop) ──
   viewport.addEventListener('wheel', e => {
     e.preventDefault();
-    const r = viewport.getBoundingClientRect();
-    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
+    zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX, e.clientY);
   }, { passive: false });
 
-  // Mouse drag (desktop)
-  let mdDown = false, mdX = 0, mdY = 0, mdTx = 0, mdTy = 0, mdMoved = false;
+  // ── Mouse drag (desktop) ──
+  let mdDown = false, mdX = 0, mdY = 0;
   viewport.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
-    mdDown = true; mdMoved = false;
-    mdX = e.clientX; mdY = e.clientY; mdTx = tx; mdTy = ty;
+    mdDown = true; mdX = e.clientX; mdY = e.clientY;
     container.classList.add('grabbing');
   });
   window.addEventListener('mousemove', e => {
     if (!mdDown) return;
-    const dx = e.clientX - mdX, dy = e.clientY - mdY;
-    if (Math.abs(dx) > 4 || Math.abs(dy) > 4) mdMoved = true;
-    if (scale > 1 && mdMoved) {
-      tx = clampTx(mdTx + dx);
-      ty = clampTy(mdTy + dy);
-      applyTransform();
-    }
+    panByPx(e.clientX - mdX, e.clientY - mdY);
+    mdX = e.clientX; mdY = e.clientY;
   });
   window.addEventListener('mouseup', () => {
     mdDown = false;
     container.classList.remove('grabbing');
   });
 
-  // Touch pinch-to-zoom + pan (mobile)
-  let t0Arr = [], initScaleT = 1, initDistT = 0;
-  let initTxT = 0, initTyT = 0, initMidX = 0, initMidY = 0;
-  let touchMoveCount = 0;
+  // ── Touch: pinch-to-zoom + pan (mobile) ──
+  let t0 = null, touchMoves = 0;
 
   viewport.addEventListener('touchstart', e => {
     _zoomTouchMoved = false;
-    touchMoveCount = 0;
-    t0Arr = Array.from(e.touches).map(t => ({ id: t.identifier, x: t.clientX, y: t.clientY }));
-    initScaleT = scale; initTxT = tx; initTyT = ty;
-    if (e.touches.length === 2) {
-      initDistT = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const r = viewport.getBoundingClientRect();
-      initMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
-      initMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
-    }
+    touchMoves = 0;
+    const r = viewport.getBoundingClientRect();
+    t0 = {
+      touches: Array.from(e.touches).map(t => ({ id: t.identifier, cx: t.clientX, cy: t.clientY })),
+      vx, vy, vw, vh,
+      ...(e.touches.length === 2 && {
+        dist: Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY),
+        midX: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        midY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
+      }),
+    };
   }, { passive: true });
 
   viewport.addEventListener('touchmove', e => {
-    touchMoveCount++;
-    if (touchMoveCount > 2) _zoomTouchMoved = true;
+    touchMoves++;
+    if (touchMoves > 2) _zoomTouchMoved = true;
+    if (!t0) return;
+    const r = viewport.getBoundingClientRect();
 
-    if (e.touches.length === 2) {
+    if (e.touches.length === 2 && t0.dist) {
       e.preventDefault();
-      const dist = Math.hypot(
+      const curDist = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const r = viewport.getBoundingClientRect();
-      const curMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left;
-      const curMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top;
-      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, initScaleT * dist / initDistT));
-      const ratio = newScale / initScaleT;
-      // Zoom centrado no ponto de pinça + pan simultâneo
-      tx = initMidX - ratio * (initMidX - initTxT) + (curMidX - initMidX);
-      ty = initMidY - ratio * (initMidY - initTyT) + (curMidY - initMidY);
-      scale = newScale;
-      if (scale <= 1) { scale = 1; tx = 0; ty = 0; }
-      else { tx = clampTx(tx); ty = clampTy(ty); }
-      applyTransform();
-    } else if (e.touches.length === 1 && scale > 1) {
+        e.touches[0].clientY - e.touches[1].clientY);
+      const curMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      const curMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const factor = curDist / t0.dist;
+
+      // Zoom absoluto a partir do estado inicial (sem acúmulo de erro)
+      const newVw = Math.max(ow / MAX_ZOOM, Math.min(ow, t0.vw / factor));
+      const ratio = newVw / t0.vw;
+      // Pivô: ponto SVG sob o centro inicial da pinça
+      const pivX = t0.vx + (t0.midX - r.left) / r.width  * t0.vw;
+      const pivY = t0.vy + (t0.midY - r.top)  / r.height * t0.vh;
+      vx = pivX - ratio * (pivX - t0.vx);
+      vy = pivY - ratio * (pivY - t0.vy);
+      vw = newVw;
+      vh = oh * (vw / ow);
+      if (vw >= ow * 0.99) { vw = ow; vh = oh; vx = ox; vy = oy; }
+      else {
+        // Pan pela diferença de centro da pinça
+        vx -= (curMidX - t0.midX) / r.width  * vw;
+        vy -= (curMidY - t0.midY) / r.height * vh;
+        clamp();
+      }
+      applyVB();
+
+    } else if (e.touches.length === 1 && vw < ow * 0.99) {
       e.preventDefault();
-      const t0 = t0Arr.find(t => t.id === e.touches[0].identifier);
-      if (t0) {
-        tx = clampTx(initTxT + (e.touches[0].clientX - t0.x));
-        ty = clampTy(initTyT + (e.touches[0].clientY - t0.y));
-        applyTransform();
+      const t = t0.touches.find(t => t.id === e.touches[0].identifier);
+      if (t) {
+        // Pan absoluto a partir do estado inicial do toque
+        vx = t0.vx - (e.touches[0].clientX - t.cx) / r.width  * t0.vw;
+        vy = t0.vy - (e.touches[0].clientY - t.cy) / r.height * t0.vh;
+        clamp();
+        applyVB();
       }
     }
   }, { passive: false });
 
-  viewport.addEventListener('touchend', () => { t0Arr = []; }, { passive: true });
+  viewport.addEventListener('touchend', e => {
+    // Recalibra estado inicial para os toques restantes
+    if (e.touches.length > 0) {
+      t0 = {
+        touches: Array.from(e.touches).map(t => ({ id: t.identifier, cx: t.clientX, cy: t.clientY })),
+        vx, vy, vw, vh,
+      };
+    } else {
+      t0 = null;
+    }
+  }, { passive: true });
 }
