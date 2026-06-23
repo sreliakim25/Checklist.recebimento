@@ -58,14 +58,17 @@ function toggleAnnotationMode() {
   _annotationMode = !_annotationMode;
   const btn = document.getElementById('btn-anotar');
   const viewport = document.getElementById('svg-viewport');
+  const svgMapa = document.getElementById('svg-mapa');
   if (_annotationMode) {
     btn.classList.add('ativo');
-    btn.title = 'Modo Anotação ATIVO — clique em uma rua/boulevard';
+    btn.textContent = '📌 Clique no mapa para anotar';
     if (viewport) viewport.style.cursor = 'crosshair';
+    if (svgMapa) svgMapa.style.outline = '3px solid #F59E0B';
   } else {
     btn.classList.remove('ativo');
-    btn.title = 'Ativar Modo Anotação';
+    btn.innerHTML = '&#128204; Anotar Dano';
     if (viewport) viewport.style.cursor = '';
+    if (svgMapa) svgMapa.style.outline = '';
     fecharBalao();
   }
 }
@@ -411,18 +414,24 @@ function registrarEventosMapa() {
       return;
     }
 
-    const el = e.target.closest('.clicavel');
-    if (!el) return;
-
-    const tipo = el.getAttribute('data-tipo');
-
-    // Modo anotação: clique em rua ou passeio cria pin
-    if (_annotationMode && (tipo === 'rua' || tipo === 'passeio')) {
-      const rua = el.getAttribute('data-rua') || '';
+    // Modo anotação: clique em QUALQUER lugar do SVG cria pin
+    if (_annotationMode) {
+      // Ignorar cliques nos botões de zoom/toolbar
+      if (e.target.closest('#zoom-controls') || e.target.closest('.mapa-toolbar-bottom')) return;
+      // Deve estar dentro do viewport do SVG
+      const vp = document.getElementById('svg-viewport');
+      if (!vp || !vp.contains(e.target)) return;
+      const el = e.target.closest('.clicavel');
+      const rua = el ? (el.getAttribute('data-rua') || '') : '';
       const pt  = screenToSvg(e.clientX, e.clientY);
       abrirBalaoNovo(e.clientX, e.clientY, pt.x, pt.y, rua);
       return;
     }
+
+    const el = e.target.closest('.clicavel');
+    if (!el) return;
+
+    const tipo = el.getAttribute('data-tipo');
 
     document.querySelectorAll('.clicavel.selecionado')
       .forEach(x => x.classList.remove('selecionado'));
