@@ -1,9 +1,10 @@
 import csv
 import io
 import os
+import urllib.request
 from datetime import datetime
 
-from flask import Flask, jsonify, render_template, request, send_file, send_from_directory
+from flask import Flask, jsonify, redirect, render_template, request, send_file, send_from_directory
 from database.db_adapter import get_db, init_db_if_needed
 
 app = Flask(__name__)
@@ -16,6 +17,53 @@ _IS_SERVERLESS = _IS_VERCEL or _HAS_POSTGRES
 FOTOS_DIR = '/tmp/fotos' if _IS_VERCEL else 'fotos'
 SVG_ORIGINAL = os.path.join('..', 'Rec. Oliveiras 1.svg')
 SVG_PROCESSADO = os.path.join('static', 'svg', 'Rec_Oliveiras_1.svg')
+
+# ── Supabase Storage ──────────────────────────────────────────────────────────
+_SUPABASE_URL = os.environ.get('SUPABASE_URL', '').rstrip('/')
+_SUPABASE_SERVICE_KEY = os.environ.get('SUPABASE_SERVICE_KEY', '')
+_STORAGE_BUCKET = 'fotos'
+_USE_SUPABASE_STORAGE = bool(_IS_VERCEL and _SUPABASE_URL and _SUPABASE_SERVICE_KEY)
+
+
+def _storage_upload(path_in_bucket: str, file_bytes: bytes, content_type: str = 'image/jpeg'):
+    url = f"{_SUPABASE_URL}/storage/v1/object/{_STORAGE_BUCKET}/{path_in_bucket}"
+    req = urllib.request.Request(url, data=file_bytes, method='POST')
+    req.add_header('Authorization', f'Bearer {_SUPABASE_SERVICE_KEY}')
+    req.add_header('Content-Type', content_type)
+    req.add_header('x-upsert', 'true')
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return resp.read()
+
+
+def _storage_delete(path_in_bucket: str):
+    url = f"{_SUPABASE_URL}/storage/v1/object/{_STORAGE_BUCKET}/{path_in_bucket}"
+    req = urllib.request.Request(url, method='DELETE')
+    req.add_header('Authorization', f'Bearer {_SUPABASE_SERVICE_KEY}')
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except Exception:
+        pass
+
+
+def _storage_public_url(path_in_bucket: str) -> str:
+    return f"{_SUPABASE_URL}/storage/v1/object/public/{_STORAGE_BUCKET}/{path_in_bucket}"
+
+
+def _storage_ensure_bucket():
+    """Cria o bucket 'fotos' se ainda não existir (idempotente)."""
+    import json
+    url = f"{_SUPABASE_URL}/storage/v1/bucket"
+    payload = json.dumps({'id': _STORAGE_BUCKET, 'name': _STORAGE_BUCKET, 'public': True}).encode()
+    req = urllib.request.Request(url, data=payload, method='POST')
+    req.add_header('Authorization', f'Bearer {_SUPABASE_SERVICE_KEY}')
+    req.add_header('Content-Type', 'application/json')
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except urllib.error.HTTPError as e:
+        if e.code != 409:  # 409 = bucket already exists
+            raise
 
 
 def get_config():
@@ -35,8 +83,9 @@ def inject_config():
 
 def init_db():
     if _IS_SERVERLESS:
-        # On Vercel: only /tmp is writable
         os.makedirs(FOTOS_DIR, exist_ok=True)
+        if _USE_SUPABASE_STORAGE:
+            _storage_ensure_bucket()
     else:
         os.makedirs('database', exist_ok=True)
         os.makedirs(FOTOS_DIR, exist_ok=True)
@@ -274,13 +323,16 @@ def api_upload_foto():
     if not file or not checklist_id:
         return jsonify({'erro': 'Arquivo ou checklist_id ausente'}), 400
 
-    pasta = os.path.join(FOTOS_DIR, str(checklist_id))
-    os.makedirs(pasta, exist_ok=True)
     ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
     nome = f"{item_id or 'geral'}_{ts}.jpg"
-    caminho_abs = os.path.join(pasta, nome)
-    file.save(caminho_abs)
-    caminho_rel = os.path.join(str(checklist_id), nome)
+    caminho_rel = f"{checklist_id}/{nome}"
+
+    if _USE_SUPABASE_STORAGE:
+        _storage_upload(caminho_rel, file.read(), file.content_type or 'image/jpeg')
+    else:
+        pasta = os.path.join(FOTOS_DIR, str(checklist_id))
+        os.makedirs(pasta, exist_ok=True)
+        file.save(os.path.join(pasta, nome))
 
     with get_db() as conn:
         cur = conn.execute(
@@ -296,15 +348,20 @@ def api_delete_foto(foto_id):
     with get_db() as conn:
         row = conn.execute('SELECT caminho FROM fotos WHERE id=?', (foto_id,)).fetchone()
         if row:
-            caminho_abs = os.path.join(FOTOS_DIR, row['caminho'])
-            if os.path.exists(caminho_abs):
-                os.remove(caminho_abs)
+            if _USE_SUPABASE_STORAGE:
+                _storage_delete(row['caminho'])
+            else:
+                caminho_abs = os.path.join(FOTOS_DIR, row['caminho'])
+                if os.path.exists(caminho_abs):
+                    os.remove(caminho_abs)
         conn.execute('DELETE FROM fotos WHERE id=?', (foto_id,))
     return jsonify({'status': 'deleted'})
 
 
 @app.route('/fotos/<path:filename>')
 def servir_foto(filename):
+    if _USE_SUPABASE_STORAGE:
+        return redirect(_storage_public_url(filename))
     caminho = os.path.join(FOTOS_DIR, filename)
     if not os.path.exists(caminho):
         return jsonify({'erro': 'Foto não encontrada'}), 404
