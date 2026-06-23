@@ -153,6 +153,8 @@ def _api_listar_checklists():
 def _api_criar_checklist():
     from schemas.checklists import PK_ITENS, SCHEMAS
     data = request.json
+    if not data:
+        return jsonify({'erro': 'Body ausente ou inválido'}), 400
     tipo = data.get('tipo')
     schema = SCHEMAS.get(tipo)
     if not schema:
@@ -303,7 +305,10 @@ def api_delete_foto(foto_id):
 
 @app.route('/fotos/<path:filename>')
 def servir_foto(filename):
-    return send_file(os.path.join(FOTOS_DIR, filename))
+    caminho = os.path.join(FOTOS_DIR, filename)
+    if not os.path.exists(caminho):
+        return jsonify({'erro': 'Foto não encontrada'}), 404
+    return send_file(caminho)
 
 
 @app.route('/api/mapa/status')
@@ -423,7 +428,7 @@ def api_pdf(cid):
         fotos = conn.execute(
             'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
 
-    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], [dict(f) for f in fotos], get_config())
+    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], [dict(f) for f in fotos], get_config(), FOTOS_DIR)
     tipo = c['tipo']
     quad = c['quadra'] or ''
     lot = c['lote'] or ''

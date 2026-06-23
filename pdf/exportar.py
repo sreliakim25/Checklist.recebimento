@@ -151,11 +151,11 @@ def _legenda(estilos):
     return tbl
 
 
-def _miniaturas_inline(fts):
+def _miniaturas_inline(fts, fotos_dir='fotos'):
     """Linha(s) de miniaturas (5cm) com caption, até THUMB_COLS por linha."""
     imgs_validas = []
     for f in fts:
-        caminho_abs = os.path.join('fotos', f['caminho'])
+        caminho_abs = os.path.join(fotos_dir, f['caminho'])
         if os.path.exists(caminho_abs):
             imgs_validas.append((caminho_abs, f))
 
@@ -197,7 +197,7 @@ def _miniaturas_inline(fts):
     return linhas
 
 
-def _secao(nome, itens, fotos_por_item, estilos, cor_h, cor_s):
+def _secao(nome, itens, fotos_por_item, estilos, cor_h, cor_s, fotos_dir='fotos'):
     elementos = []
     p = Paragraph(nome.upper(), estilos['sec'])
     tbl_hdr = Table([[p]], colWidths=[TABLE_W])
@@ -257,27 +257,25 @@ def _secao(nome, itens, fotos_por_item, estilos, cor_h, cor_s):
         block = [t]
 
         if item['id'] in fotos_por_item:
-            block.extend(_miniaturas_inline(fotos_por_item[item['id']]))
+            block.extend(_miniaturas_inline(fotos_por_item[item['id']], fotos_dir))
 
         elementos.append(KeepTogether(block))
 
     return elementos
 
 
-def _registro_fotografico(itens_ordenados, fotos_por_item, fotos_gerais, estilos, cor_h):
+def _registro_fotografico(itens_ordenados, fotos_por_item, fotos_gerais, estilos, cor_h, fotos_dir='fotos'):
     """Seção anexa: foto grande (8cm) + informações completas do item."""
-    # Coleta todas as fotos com contexto, mantendo a ordem dos itens
     entradas = []
     for item in itens_ordenados:
         fts = fotos_por_item.get(item['id'], [])
         for f in fts:
-            caminho_abs = os.path.join('fotos', f['caminho'])
+            caminho_abs = os.path.join(fotos_dir, f['caminho'])
             if os.path.exists(caminho_abs):
                 entradas.append((caminho_abs, item, f))
 
-    # Fotos gerais (sem item vinculado)
     for f in fotos_gerais:
-        caminho_abs = os.path.join('fotos', f['caminho'])
+        caminho_abs = os.path.join(fotos_dir, f['caminho'])
         if os.path.exists(caminho_abs):
             entradas.append((caminho_abs, None, f))
 
@@ -350,7 +348,7 @@ def _registro_fotografico(itens_ordenados, fotos_por_item, fotos_gerais, estilos
     return elementos
 
 
-def _obs_gerais(obs_texto, fotos_gerais, estilos, cor_h):
+def _obs_gerais(obs_texto, fotos_gerais, estilos, cor_h, fotos_dir='fotos'):
     p_hdr = Paragraph('OBSERVAÇÕES GERAIS', estilos['sec'])
     tbl_hdr = Table([[p_hdr]], colWidths=[TABLE_W])
     tbl_hdr.setStyle(TableStyle([
@@ -372,7 +370,7 @@ def _obs_gerais(obs_texto, fotos_gerais, estilos, cor_h):
     elementos = [tbl_hdr, tbl_obs]
     if fotos_gerais:
         elementos.append(Spacer(1, 0.25 * cm))
-        elementos.extend(_miniaturas_inline(fotos_gerais))
+        elementos.extend(_miniaturas_inline(fotos_gerais, fotos_dir))
     return elementos
 
 
@@ -427,7 +425,7 @@ def _resultado_assinaturas(resultado, estilos, cor_h):
     return [tbl_hdr, tbl_res, Spacer(1, 0.3 * cm), assin_hdr_tbl, assin_body_tbl]
 
 
-def gerar_pdf(checklist: dict, itens: list, fotos: list, config: dict = None) -> bytes:
+def gerar_pdf(checklist: dict, itens: list, fotos: list, config: dict = None, fotos_dir: str = 'fotos') -> bytes:
     if config is None:
         config = {}
     buf = io.BytesIO()
@@ -469,15 +467,14 @@ def gerar_pdf(checklist: dict, itens: list, fotos: list, config: dict = None) ->
             fotos_gerais.append(f)
 
     for secao_nome, secao_itens in secoes.items():
-        story.extend(_secao(secao_nome, secao_itens, fotos_por_item, estilos, cor_h, cor_s))
+        story.extend(_secao(secao_nome, secao_itens, fotos_por_item, estilos, cor_h, cor_s, fotos_dir))
         story.append(Spacer(1, 0.3 * cm))
 
-    story.extend(_obs_gerais(checklist.get('observacoes_gerais', ''), fotos_gerais, estilos, cor_h))
+    story.extend(_obs_gerais(checklist.get('observacoes_gerais', ''), fotos_gerais, estilos, cor_h, fotos_dir))
     story.append(Spacer(1, 0.3 * cm))
     story.extend(_resultado_assinaturas(checklist.get('resultado', ''), estilos, cor_h))
 
-    # Anexo fotográfico (nova página)
-    story.extend(_registro_fotografico(itens, fotos_por_item, fotos_gerais, estilos, cor_h))
+    story.extend(_registro_fotografico(itens, fotos_por_item, fotos_gerais, estilos, cor_h, fotos_dir))
 
     rodape_txt = f'Obra {num_obra} — {nome_obra} | UDE — {construtora}'
 
