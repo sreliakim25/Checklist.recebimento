@@ -435,6 +435,91 @@ def api_anotacao_foto(aid):
     return jsonify({'caminho': caminho_rel})
 
 
+@app.route('/api/mapa/anotacoes/pdf')
+def api_anotacoes_pdf():
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import cm
+    from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate,
+                                    Spacer, Table, TableStyle)
+
+    with get_db() as conn:
+        rows = conn.execute(
+            'SELECT * FROM anotacoes_mapa ORDER BY criado_em ASC'
+        ).fetchall()
+    anotacoes = [dict(r) for r in rows]
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+
+    TEMA = colors.HexColor('#5C1A2E')
+    styles = getSampleStyleSheet()
+    titulo_style = ParagraphStyle('Titulo', parent=styles['Title'],
+                                  fontSize=16, textColor=TEMA,
+                                  spaceAfter=6)
+    sub_style = ParagraphStyle('Sub', parent=styles['Normal'],
+                               fontSize=9, textColor=colors.gray,
+                               spaceAfter=14)
+    rua_style = ParagraphStyle('Rua', parent=styles['Normal'],
+                               fontSize=11, textColor=TEMA,
+                               fontName='Helvetica-Bold', spaceBefore=10, spaceAfter=4)
+    obs_style = ParagraphStyle('Obs', parent=styles['Normal'],
+                               fontSize=10, spaceAfter=6)
+
+    story = [
+        Paragraph('Relatório de Danos na Pavimentação', titulo_style),
+        Paragraph(f'Obra 38 — Recanto das Oliveiras | UDE — Viana &amp; Moura Construções<br/>'
+                  f'Gerado em: {datetime.now().strftime("%d/%m/%Y %H:%M")}', sub_style),
+    ]
+
+    if not anotacoes:
+        story.append(Paragraph('Nenhuma anotação registrada.', obs_style))
+    else:
+        for i, a in enumerate(anotacoes, 1):
+            rua = a.get('rua') or 'Rua não identificada'
+            texto = a.get('texto') or '(sem descrição)'
+            data = a.get('criado_em', '')
+            if data and 'T' in str(data):
+                data = str(data)[:16].replace('T', ' ')
+
+            story.append(Paragraph(f'{i}. {rua}', rua_style))
+            data_info = f'<font size="8" color="gray">Registrado em: {data}</font>'
+            story.append(Paragraph(data_info, obs_style))
+            story.append(Paragraph(texto, obs_style))
+
+            foto_caminho = a.get('foto_caminho')
+            if foto_caminho:
+                foto_data = None
+                if _USE_SUPABASE_STORAGE:
+                    pub_url = _storage_public_url(foto_caminho)
+                    try:
+                        with urllib.request.urlopen(pub_url, timeout=10) as resp:
+                            foto_data = io.BytesIO(resp.read())
+                    except Exception:
+                        pass
+                else:
+                    fpath = os.path.join(FOTOS_DIR, foto_caminho)
+                    if os.path.exists(fpath):
+                        foto_data = fpath
+                if foto_data:
+                    try:
+                        img = Image(foto_data, width=8*cm, height=6*cm)
+                        img.hAlign = 'LEFT'
+                        story.append(img)
+                    except Exception:
+                        pass
+            story.append(Spacer(1, 0.3*cm))
+
+    doc.build(story)
+    buf.seek(0)
+    nome = f'Relatorio_Danos_{datetime.now().strftime("%Y%m%d")}.pdf'
+    return send_file(buf, mimetype='application/pdf', as_attachment=True,
+                     download_name=nome)
+
+
 @app.route('/api/mapa/status')
 def api_mapa_status():
     tipo = request.args.get('tipo')

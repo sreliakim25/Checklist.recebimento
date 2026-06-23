@@ -686,14 +686,13 @@ function renderizarPin(a) {
 function posicionarBalao(clientX, clientY) {
   const balao = document.getElementById('balao-anotacao');
   balao.style.display = 'block';
-  const vp = document.getElementById('svg-viewport').getBoundingClientRect();
-  let left = clientX - vp.left + 14;
-  let top  = clientY - vp.top  - 20;
-  // Evitar sair da tela
-  const bw = 280, bh = 220;
-  if (left + bw > vp.width)  left = clientX - vp.left - bw - 14;
-  if (top  + bh > vp.height) top  = clientY - vp.top  - bh;
+  const bw = 272, bh = 260;
+  let left = clientX + 14;
+  let top  = clientY - 20;
+  if (left + bw > window.innerWidth)  left = clientX - bw - 14;
+  if (top  + bh > window.innerHeight) top  = clientY - bh;
   if (top < 0) top = 4;
+  if (left < 0) left = 4;
   balao.style.left = left + 'px';
   balao.style.top  = top  + 'px';
 }
