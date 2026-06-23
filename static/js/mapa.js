@@ -31,7 +31,51 @@ let SVG_EL = null;
 const loteMap = {};  // svgId → { nr, quadra }
 let _zoomTouchMoved = false;  // flag para distinguir tap de pan no mapa
 
+// ViewBox atual exposto para conversão de coordenadas (atualizado por inicializarZoom)
+let _viewBox = { x: 0, y: 0, w: 1, h: 1 };
+
+function screenToSvg(clientX, clientY) {
+  const r = document.getElementById('svg-viewport').getBoundingClientRect();
+  return {
+    x: _viewBox.x + (clientX - r.left) / r.width  * _viewBox.w,
+    y: _viewBox.y + (clientY - r.top)  / r.height * _viewBox.h,
+  };
+}
+
+function svgToScreen(svgX, svgY) {
+  const r = document.getElementById('svg-viewport').getBoundingClientRect();
+  return {
+    left: r.left + (svgX - _viewBox.x) / _viewBox.w * r.width,
+    top:  r.top  + (svgY - _viewBox.y) / _viewBox.h * r.height,
+  };
+}
+
+// ── Modo Anotação ─────────────────────────────────────────────────────────────
+let _annotationMode = false;
+let _balaoState = { mode: 'new', anotacaoId: null, svgX: 0, svgY: 0, rua: '', fotoFile: null };
+
+function toggleAnnotationMode() {
+  _annotationMode = !_annotationMode;
+  const btn = document.getElementById('btn-anotar');
+  const viewport = document.getElementById('svg-viewport');
+  if (_annotationMode) {
+    btn.classList.add('ativo');
+    btn.title = 'Modo Anotação ATIVO — clique em uma rua/boulevard';
+    if (viewport) viewport.style.cursor = 'crosshair';
+  } else {
+    btn.classList.remove('ativo');
+    btn.title = 'Ativar Modo Anotação';
+    if (viewport) viewport.style.cursor = '';
+    fecharBalao();
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async function () {
+  document.getElementById('btn-anotar')?.addEventListener('click', e => {
+    e.stopPropagation();
+    toggleAnnotationMode();
+  });
+
   if (!SVG_DISPONIVEL) return;
   SVG_EL = await carregarSVG();
   if (!SVG_EL) return;
@@ -40,10 +84,11 @@ document.addEventListener('DOMContentLoaded', async function () {
   construirMapaLotes(SVG_EL);
   await carregarStatus();
   adicionarMarcadoresEquipamentos(SVG_EL);
-  construirMapaRuas(SVG_EL);  // rua markers ficam por cima de tudo
+  construirMapaRuas(SVG_EL);
   registrarEventosMapa();
   registrarFechaPanel();
   inicializarZoom();
+  await carregarAnotacoes();
 });
 
 // ── Carrega o SVG via fetch + DOMParser ──
@@ -354,14 +399,34 @@ function registrarEventosMapa() {
   const area = document.getElementById('svg-mapa');
   area.addEventListener('click', async function (e) {
     if (_zoomTouchMoved) { _zoomTouchMoved = false; return; }
+
+    // Clique em pin de anotação existente
+    const pinEl = e.target.closest('.pin-anotacao');
+    if (pinEl) {
+      const id    = parseInt(pinEl.getAttribute('data-aid'));
+      const texto = pinEl.getAttribute('data-texto') || '';
+      const foto  = pinEl.getAttribute('data-foto') || '';
+      const rua   = pinEl.getAttribute('data-rua') || '';
+      abrirBalaoVerPin(e.clientX, e.clientY, id, texto, foto, rua);
+      return;
+    }
+
     const el = e.target.closest('.clicavel');
     if (!el) return;
+
+    const tipo = el.getAttribute('data-tipo');
+
+    // Modo anotação: clique em rua ou passeio cria pin
+    if (_annotationMode && (tipo === 'rua' || tipo === 'passeio')) {
+      const rua = el.getAttribute('data-rua') || '';
+      const pt  = screenToSvg(e.clientX, e.clientY);
+      abrirBalaoNovo(e.clientX, e.clientY, pt.x, pt.y, rua);
+      return;
+    }
 
     document.querySelectorAll('.clicavel.selecionado')
       .forEach(x => x.classList.remove('selecionado'));
     el.classList.add('selecionado');
-
-    const tipo = el.getAttribute('data-tipo');
 
     if (tipo === 'lote') {
       await abrirPainelLote(el);
@@ -572,6 +637,175 @@ function badgeHtml(resultado) {
   return `<span class="badge" style="background:${cores[resultado] || '#94a3b8'}">${resultado || 'PENDENTE'}</span>`;
 }
 
+// ── Anotações no mapa ─────────────────────────────────────────────────────────
+
+async function carregarAnotacoes() {
+  try {
+    const resp = await fetch('/api/mapa/anotacoes');
+    const lista = await resp.json();
+    lista.forEach(a => renderizarPin(a));
+  } catch (e) {
+    console.warn('Erro ao carregar anotações:', e);
+  }
+}
+
+function renderizarPin(a) {
+  if (!SVG_EL) return;
+  const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  g.setAttribute('class', 'pin-anotacao');
+  g.setAttribute('data-aid', a.id);
+  g.setAttribute('data-texto', a.texto || '');
+  g.setAttribute('data-foto', a.foto_caminho || '');
+  g.setAttribute('data-rua', a.rua || '');
+  g.style.cursor = 'pointer';
+
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', a.svg_x);
+  circle.setAttribute('cy', a.svg_y);
+  circle.setAttribute('r', 5);
+  circle.setAttribute('fill', '#F59E0B');
+  circle.setAttribute('stroke', '#fff');
+  circle.setAttribute('stroke-width', '1.5');
+
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  icon.setAttribute('x', a.svg_x);
+  icon.setAttribute('y', a.svg_y + 2.5);
+  icon.setAttribute('text-anchor', 'middle');
+  icon.setAttribute('font-size', '5');
+  icon.setAttribute('pointer-events', 'none');
+  icon.textContent = '!';
+  icon.setAttribute('fill', '#fff');
+  icon.setAttribute('font-weight', 'bold');
+
+  g.appendChild(circle);
+  g.appendChild(icon);
+  SVG_EL.appendChild(g);
+  return g;
+}
+
+function posicionarBalao(clientX, clientY) {
+  const balao = document.getElementById('balao-anotacao');
+  balao.style.display = 'block';
+  const vp = document.getElementById('svg-viewport').getBoundingClientRect();
+  let left = clientX - vp.left + 14;
+  let top  = clientY - vp.top  - 20;
+  // Evitar sair da tela
+  const bw = 280, bh = 220;
+  if (left + bw > vp.width)  left = clientX - vp.left - bw - 14;
+  if (top  + bh > vp.height) top  = clientY - vp.top  - bh;
+  if (top < 0) top = 4;
+  balao.style.left = left + 'px';
+  balao.style.top  = top  + 'px';
+}
+
+function abrirBalaoNovo(clientX, clientY, svgX, svgY, rua) {
+  _balaoState = { mode: 'new', anotacaoId: null, svgX, svgY, rua, fotoFile: null };
+  document.getElementById('balao-titulo').textContent = 'Nova Anotação';
+  document.getElementById('balao-rua-label').textContent = rua || 'Rua não identificada';
+  document.getElementById('balao-texto').value = '';
+  document.getElementById('balao-foto-preview').style.display = 'none';
+  document.getElementById('balao-foto-input').value = '';
+  document.getElementById('balao-modo-ver').style.display = 'none';
+  document.getElementById('balao-texto').style.display = '';
+  document.getElementById('balao-btn-salvar').style.display = '';
+  document.querySelector('.btn-foto-balao').style.display = '';
+  posicionarBalao(clientX, clientY);
+}
+
+function abrirBalaoVerPin(clientX, clientY, id, texto, fotoCaminho, rua) {
+  _balaoState = { mode: 'view', anotacaoId: id, svgX: 0, svgY: 0, rua, fotoFile: null };
+  document.getElementById('balao-titulo').textContent = `Anotação #${id}`;
+  document.getElementById('balao-rua-label').textContent = rua || '';
+  document.getElementById('balao-view-texto').textContent = texto || '(sem texto)';
+
+  const fotoVer = document.getElementById('balao-view-foto');
+  if (fotoCaminho) {
+    fotoVer.src = `/fotos/${fotoCaminho}`;
+    fotoVer.style.display = 'block';
+  } else {
+    fotoVer.style.display = 'none';
+  }
+
+  document.getElementById('balao-modo-ver').style.display = 'block';
+  document.getElementById('balao-texto').style.display = 'none';
+  document.getElementById('balao-btn-salvar').style.display = 'none';
+  document.querySelector('.btn-foto-balao').style.display = 'none';
+  document.getElementById('balao-foto-preview').style.display = 'none';
+  posicionarBalao(clientX, clientY);
+}
+
+function balaoModoEditar() {
+  const id = _balaoState.anotacaoId;
+  const texto = document.getElementById('balao-view-texto').textContent;
+  _balaoState.mode = 'edit';
+  document.getElementById('balao-titulo').textContent = `Editar Anotação #${id}`;
+  document.getElementById('balao-texto').value = texto === '(sem texto)' ? '' : texto;
+  document.getElementById('balao-texto').style.display = '';
+  document.getElementById('balao-btn-salvar').style.display = '';
+  document.querySelector('.btn-foto-balao').style.display = '';
+  document.getElementById('balao-modo-ver').style.display = 'none';
+}
+
+function fecharBalao() {
+  document.getElementById('balao-anotacao').style.display = 'none';
+  _balaoState.fotoFile = null;
+}
+
+function balaoFotoSelecionada(input) {
+  const file = input.files[0];
+  if (!file) return;
+  _balaoState.fotoFile = file;
+  const preview = document.getElementById('balao-foto-preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+}
+
+async function salvarAnotacao() {
+  const texto = document.getElementById('balao-texto').value.trim();
+  const { mode, anotacaoId, svgX, svgY, rua, fotoFile } = _balaoState;
+
+  let id = anotacaoId;
+
+  if (mode === 'new') {
+    const resp = await fetch('/api/mapa/anotacoes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rua, svg_x: svgX, svg_y: svgY, texto })
+    });
+    const data = await resp.json();
+    id = data.id;
+    renderizarPin({ id, svg_x: svgX, svg_y: svgY, texto, foto_caminho: '', rua });
+  } else {
+    await fetch(`/api/mapa/anotacoes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texto })
+    });
+    // Atualiza atributos do pin existente
+    const pin = SVG_EL?.querySelector(`.pin-anotacao[data-aid="${id}"]`);
+    if (pin) pin.setAttribute('data-texto', texto);
+  }
+
+  if (fotoFile && id) {
+    const fd = new FormData();
+    fd.append('file', fotoFile);
+    const r = await fetch(`/api/mapa/anotacoes/${id}/foto`, { method: 'POST', body: fd });
+    const d = await r.json();
+    const pin = SVG_EL?.querySelector(`.pin-anotacao[data-aid="${id}"]`);
+    if (pin && d.caminho) pin.setAttribute('data-foto', d.caminho);
+  }
+
+  fecharBalao();
+}
+
+async function excluirAnotacao() {
+  const id = _balaoState.anotacaoId;
+  if (!id || !confirm('Excluir esta anotação?')) return;
+  await fetch(`/api/mapa/anotacoes/${id}`, { method: 'DELETE' });
+  SVG_EL?.querySelector(`.pin-anotacao[data-aid="${id}"]`)?.remove();
+  fecharBalao();
+}
+
 // ── Zoom e Pan do mapa via viewBox — renderiza nítido em qualquer zoom ──
 function inicializarZoom() {
   const viewport = document.getElementById('svg-viewport');
@@ -587,6 +821,7 @@ function inicializarZoom() {
   const MAX_ZOOM = 12;  // viewBox pode encolher até 1/12 do original
 
   function applyVB() {
+    _viewBox = { x: vx, y: vy, w: vw, h: vh };
     svg.setAttribute('viewBox', `${vx} ${vy} ${vw} ${vh}`);
   }
 

@@ -380,6 +380,61 @@ def servir_foto(filename):
     return send_file(caminho)
 
 
+@app.route('/api/mapa/anotacoes', methods=['GET', 'POST'])
+def api_anotacoes():
+    if request.method == 'POST':
+        data = request.json or {}
+        with get_db() as conn:
+            cur = conn.execute(
+                'INSERT INTO anotacoes_mapa (rua, svg_x, svg_y, texto) VALUES (?,?,?,?)',
+                (data.get('rua'), data.get('svg_x', 0), data.get('svg_y', 0), data.get('texto'))
+            )
+        return jsonify({'id': cur.lastrowid})
+    with get_db() as conn:
+        rows = conn.execute('SELECT * FROM anotacoes_mapa ORDER BY criado_em DESC').fetchall()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/mapa/anotacoes/<int:aid>', methods=['PUT', 'DELETE'])
+def api_anotacao_id(aid):
+    if request.method == 'DELETE':
+        with get_db() as conn:
+            # Remove foto do storage se existir
+            row = conn.execute('SELECT foto_caminho FROM anotacoes_mapa WHERE id=?', (aid,)).fetchone()
+            if row and row['foto_caminho']:
+                if _USE_SUPABASE_STORAGE:
+                    _storage_delete(row['foto_caminho'])
+                else:
+                    caminho_abs = os.path.join(FOTOS_DIR, row['foto_caminho'])
+                    if os.path.exists(caminho_abs):
+                        os.remove(caminho_abs)
+            conn.execute('DELETE FROM anotacoes_mapa WHERE id=?', (aid,))
+        return jsonify({'status': 'deleted'})
+    data = request.json or {}
+    with get_db() as conn:
+        conn.execute('UPDATE anotacoes_mapa SET texto=? WHERE id=?', (data.get('texto'), aid))
+    return jsonify({'status': 'updated'})
+
+
+@app.route('/api/mapa/anotacoes/<int:aid>/foto', methods=['POST'])
+def api_anotacao_foto(aid):
+    file = request.files.get('file')
+    if not file:
+        return jsonify({'erro': 'Arquivo ausente'}), 400
+    ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
+    nome = f"anotacao_{aid}_{ts}.jpg"
+    caminho_rel = f"anotacoes/{nome}"
+    if _USE_SUPABASE_STORAGE:
+        _storage_upload(caminho_rel, file.read(), file.content_type or 'image/jpeg')
+    else:
+        pasta = os.path.join(FOTOS_DIR, 'anotacoes')
+        os.makedirs(pasta, exist_ok=True)
+        file.save(os.path.join(pasta, nome))
+    with get_db() as conn:
+        conn.execute('UPDATE anotacoes_mapa SET foto_caminho=? WHERE id=?', (caminho_rel, aid))
+    return jsonify({'caminho': caminho_rel})
+
+
 @app.route('/api/mapa/status')
 def api_mapa_status():
     tipo = request.args.get('tipo')

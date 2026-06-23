@@ -54,3 +54,13 @@ CREATE INDEX IF NOT EXISTS idx_checklists_quadra_lote ON checklists(quadra, lote
 CREATE INDEX IF NOT EXISTS idx_checklists_rua ON checklists(rua);
 CREATE INDEX IF NOT EXISTS idx_itens_checklist ON checklist_itens(checklist_id);
 CREATE INDEX IF NOT EXISTS idx_fotos_checklist ON fotos(checklist_id);
+
+CREATE TABLE IF NOT EXISTS anotacoes_mapa (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    rua           TEXT,
+    svg_x         REAL NOT NULL,
+    svg_y         REAL NOT NULL,
+    texto         TEXT,
+    foto_caminho  TEXT,
+    criado_em     TEXT DEFAULT (datetime('now'))
+);

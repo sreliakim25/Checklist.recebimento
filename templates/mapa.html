@@ -8,6 +8,7 @@
         <button class="btn-zoom" id="btn-zoom-in" title="Aproximar">＋</button>
         <button class="btn-zoom" id="btn-zoom-out" title="Afastar">－</button>
         <button class="btn-zoom" id="btn-zoom-reset" title="Redefinir">⊡</button>
+        <button class="btn-zoom btn-anotar" id="btn-anotar" title="Modo Anotação — clique em uma rua para registrar problema">&#128204;</button>
       </div>
       <div id="svg-viewport">
         <div id="svg-container">
@@ -36,6 +37,37 @@
   <span class="leg-item leg-ressalvas">C/ Ressalvas</span>
   <span class="leg-item leg-reprovado">Reprovado</span>
   <span class="leg-item leg-pendente">Pendente</span>
+</div>
+
+<!-- Balão de anotação flutuante -->
+<div id="balao-anotacao" class="balao-anotacao" style="display:none">
+  <div class="balao-header">
+    <span id="balao-titulo">Nova Anotação</span>
+    <button class="balao-fechar" onclick="fecharBalao()">×</button>
+  </div>
+  <div class="balao-body">
+    <div class="balao-rua" id="balao-rua-label"></div>
+    <textarea id="balao-texto" placeholder="Descreva o problema ou observação…" rows="3"></textarea>
+    <div class="balao-acoes">
+      <label class="btn-foto-balao" title="Adicionar foto">
+        📷
+        <input type="file" id="balao-foto-input" accept="image/*" capture="environment" style="display:none" onchange="balaoFotoSelecionada(this)">
+      </label>
+      <img id="balao-foto-preview" class="balao-foto-preview" style="display:none">
+      <div class="balao-botoes">
+        <button id="balao-btn-salvar" class="btn-salvar-balao" onclick="salvarAnotacao()">Salvar</button>
+        <button class="btn-cancelar-balao" onclick="fecharBalao()">Cancelar</button>
+      </div>
+    </div>
+    <div id="balao-modo-ver" style="display:none">
+      <div class="balao-view-texto" id="balao-view-texto"></div>
+      <img id="balao-view-foto" class="balao-foto-preview" style="display:none">
+      <div class="balao-botoes">
+        <button class="btn-editar-balao" onclick="balaoModoEditar()">Editar</button>
+        <button class="btn-excluir-balao" onclick="excluirAnotacao()">Excluir</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
