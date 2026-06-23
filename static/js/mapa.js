@@ -1,11 +1,14 @@
 // Mapeamento: texto no SVG → dados do equipamento
 // relativeTo: posiciona o círculo com offset em relação ao marcador de outro tipo
 const EQUIP_TEXTOS = {
-  'GUARITA':         { tipo: 'guarita',  label: 'GUARITA',        equipamento: 'guarita'       },
-  'DEP. LIXO':       { tipo: 'dep_lixo', label: 'DEP. LIXO',       equipamento: 'deposito-lixo', relativeTo: 'guarita', offsetX: 26, offsetY: 0 },
-  'SALÃO DE FESTAS': { tipo: 'salao',    label: 'SALÃO DE FESTAS', equipamento: 'salao-festas'  },
-  'DECK PISCINAS':   { tipo: 'deck',     label: 'DECK PISCINAS',   equipamento: 'deck-piscina'  },
-  'QUIOSQUES':       { tipo: 'quiosque', label: 'QUIOSQUES',       equipamento: 'quiosque'      },
+  'GUARITA':           { tipo: 'guarita',           label: 'GUARITA',           equipamento: 'guarita'           },
+  'DEP. LIXO':         { tipo: 'dep_lixo',          label: 'DEP. LIXO',         equipamento: 'deposito-lixo',    relativeTo: 'guarita', offsetX: 26, offsetY: 0 },
+  'SALÃO DE FESTAS':   { tipo: 'salao',             label: 'SALÃO DE FESTAS',   equipamento: 'salao-festas'      },
+  'DECK PISCINAS':     { tipo: 'deck',              label: 'DECK PISCINAS',     equipamento: 'deck-piscina'      },
+  'QUIOSQUES':         { tipo: 'quiosque',          label: 'QUIOSQUES',         equipamento: 'quiosque'          },
+  'PLAYGROUND':        { tipo: 'parque',            label: 'PARQUE',            equipamento: 'parque-playground' },
+  'MINICAMPO':         { tipo: 'campo',             label: 'MINICAMPO',         equipamento: 'minicampo'         },
+  'QUADRA ESPORTIVA':  { tipo: 'quadra_esportiva',  label: 'QUADRA ESPORTIVA',  equipamento: 'quadra-esportiva'  },
 };
 
 // Mapeamento quadra → label para interface

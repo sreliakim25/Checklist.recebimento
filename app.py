@@ -427,7 +427,7 @@ def api_mapa_status():
         ''').fetchall()
         equip = conn.execute('''
             SELECT tipo, equipamento, resultado FROM checklists
-            WHERE tipo IN ('guarita','quiosque','dep_lixo','deck','salao') AND finalizado=1
+            WHERE tipo IN ('guarita','quiosque','dep_lixo','deck','salao','parque','campo','quadra_esportiva') AND finalizado=1
         ''').fetchall()
 
     return jsonify({

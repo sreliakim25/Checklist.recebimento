@@ -780,4 +780,117 @@ SCHEMAS = {
         ],
         'pk_itens': ['PK-01', 'PK-02', 'PK-04', 'PK-05', 'PK-06', 'PK-07', 'PK-09', 'PK-10'],
     },
+
+    'parque': {
+        'tipo': 'parque',
+        'titulo': 'Checklist de Recebimento — Parque Infantil / Playground',
+        'secoes': [
+            {
+                'titulo': '1. Piso e Drenagem',
+                'itens': [
+                    {'nr': '1.1', 'desc': 'Piso de borracha/areia: instalado sem buracos, levantamentos ou bordas cortantes', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Nivelamento do piso: sem desníveis perigosos; espessura conforme projeto', 'foto_se_nc': True},
+                    {'nr': '1.3', 'desc': 'Drenagem: sem acúmulo de água após chuva — teste visual ou funcional', 'foto_se_nc': True},
+                    {'nr': '1.4', 'desc': 'Cercamento/limite da área: conforme projeto, sem brechas ou portões soltos', 'foto_se_nc': True},
+                    {'nr': '1.5', 'desc': 'Área livre de entulho, sujeira e materiais construtivos', 'foto_se_nc': True},
+                ]
+            },
+            {
+                'titulo': '2. Brinquedos e Estruturas',
+                'itens': [
+                    {'nr': '2.1', 'desc': 'Balanço: fixação firme, assento íntegro, sem pontas ou arestas expostas', 'foto_se_nc': True},
+                    {'nr': '2.2', 'desc': 'Escorregador: fixação, sem bordas cortantes, escada com corrimão', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Trepa-trepa / gira-gira / gangorra: fixação, sem pontas, movimento livre', 'foto_se_nc': True},
+                    {'nr': '2.4', 'desc': 'Parafusos e fixações: sem pontas expostas em todos os brinquedos', 'foto_se_nc': True},
+                    {'nr': '2.5', 'desc': 'Pintura/acabamento: sem corrosão, lascamento ou exposição de metal', 'foto_se_nc': True},
+                    {'nr': '2.6', 'desc': 'Distância mínima entre brinquedos conforme NBR 16.071', 'foto_se_nc': False},
+                ]
+            },
+            {
+                'titulo': '3. Segurança e Acabamento',
+                'itens': [
+                    {'nr': '3.1', 'desc': 'Placa de identificação e regras de uso instalada e legível', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'Ausência de pontas, quinas e arestas cortantes em toda a área', 'foto_se_nc': True},
+                    {'nr': '3.3', 'desc': 'Iluminação (se prevista): postes instalados, luminárias funcionando', 'foto_se_nc': True},
+                    {'nr': '3.4', 'desc': 'Fotos do estado final de toda a área registradas (obrigatório)', 'foto_se_nc': True},
+                ]
+            },
+        ],
+        'pk_itens': ['PK-09', 'PK-10'],
+    },
+
+    'campo': {
+        'tipo': 'campo',
+        'titulo': 'Checklist de Recebimento — Minicampo / Campo Esportivo',
+        'secoes': [
+            {
+                'titulo': '1. Piso e Superfície',
+                'itens': [
+                    {'nr': '1.1', 'desc': 'Grama sintética: instalada sem emendas soltas, rasgos ou deformações', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Nivelamento da superfície: sem ondulações maiores que 1 cm/m', 'foto_se_nc': True},
+                    {'nr': '1.3', 'desc': 'Borrachão/areia sobre a grama: distribuição uniforme conforme projeto', 'foto_se_nc': False},
+                    {'nr': '1.4', 'desc': 'Linhas de marcação: pintadas/aplicadas, íntegras e na cor correta', 'foto_se_nc': True},
+                    {'nr': '1.5', 'desc': 'Drenos e saídas pluviais: sem obstrução, escoamento livre', 'foto_se_nc': True},
+                ]
+            },
+            {
+                'titulo': '2. Cercamento e Alambrado',
+                'itens': [
+                    {'nr': '2.1', 'desc': 'Alambrado lateral: altura conforme projeto, sem deformações ou aberturas', 'foto_se_nc': True},
+                    {'nr': '2.2', 'desc': 'Postes do alambrado: embutidos, nivelados, sem oscilação', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Tela de fechamento: sem rasgos, fixada em todo o perímetro', 'foto_se_nc': True},
+                    {'nr': '2.4', 'desc': 'Portões de acesso: funcionamento correto, travas e dobradiças ok', 'foto_se_nc': True},
+                ]
+            },
+            {
+                'titulo': '3. Traves e Equipamentos',
+                'itens': [
+                    {'nr': '3.1', 'desc': 'Traves: dimensões conforme projeto, fixadas, sem deformações ou ferrugem', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'Redes das traves: instaladas sem rasgos, fixação completa em todo o perímetro', 'foto_se_nc': True},
+                    {'nr': '3.3', 'desc': 'Iluminação (se prevista): postes instalados, luminárias funcionando', 'foto_se_nc': True},
+                    {'nr': '3.4', 'desc': 'Placa de identificação e regras de uso instalada e legível', 'foto_se_nc': True},
+                    {'nr': '3.5', 'desc': 'Fotos do estado final registradas (obrigatório)', 'foto_se_nc': True},
+                ]
+            },
+        ],
+        'pk_itens': ['PK-09', 'PK-10'],
+    },
+
+    'quadra_esportiva': {
+        'tipo': 'quadra_esportiva',
+        'titulo': 'Checklist de Recebimento — Quadra Esportiva / Poliesportiva',
+        'secoes': [
+            {
+                'titulo': '1. Piso',
+                'itens': [
+                    {'nr': '1.1', 'desc': 'Piso: tipo conforme projeto (concreto/asfalto/borracha/poliesportivo)', 'foto_se_nc': True},
+                    {'nr': '1.2', 'desc': 'Superfície: sem trincas, lascamentos, ondulações ou irregularidades', 'foto_se_nc': True},
+                    {'nr': '1.3', 'desc': 'Nivelamento: sem empoçamentos — teste visual pós-chuva ou com régua', 'foto_se_nc': True},
+                    {'nr': '1.4', 'desc': 'Linhas de marcação: pintadas em cores distintas, íntegras, dimensões corretas', 'foto_se_nc': True},
+                    {'nr': '1.5', 'desc': 'Drenos e grelhas: instalados, sem obstrução, escoamento livre', 'foto_se_nc': True},
+                ]
+            },
+            {
+                'titulo': '2. Cercamento',
+                'itens': [
+                    {'nr': '2.1', 'desc': 'Alambrado: altura conforme projeto, sem deformações ou aberturas', 'foto_se_nc': True},
+                    {'nr': '2.2', 'desc': 'Postes: embutidos, nivelados, sem oscilação, sem ferrugem', 'foto_se_nc': True},
+                    {'nr': '2.3', 'desc': 'Tela de fechamento: sem rasgos, fixada em todo o perímetro', 'foto_se_nc': True},
+                    {'nr': '2.4', 'desc': 'Portão de acesso: funcionamento correto, trava e dobradiça ok', 'foto_se_nc': True},
+                ]
+            },
+            {
+                'titulo': '3. Equipamentos Esportivos',
+                'itens': [
+                    {'nr': '3.1', 'desc': 'Tabelas de basquete (se previstas): instaladas, niveladas, fixação firme', 'foto_se_nc': True},
+                    {'nr': '3.2', 'desc': 'Traves de futsal (se previstas): dimensões conforme projeto, fixadas', 'foto_se_nc': True},
+                    {'nr': '3.3', 'desc': 'Redes instaladas: sem rasgos, fixação completa', 'foto_se_nc': True},
+                    {'nr': '3.4', 'desc': 'Iluminação (se prevista): postes instalados, luminárias funcionando', 'foto_se_nc': True},
+                    {'nr': '3.5', 'desc': 'Placa de identificação e regras de uso instalada e legível', 'foto_se_nc': True},
+                    {'nr': '3.6', 'desc': 'Fotos do estado final registradas (obrigatório)', 'foto_se_nc': True},
+                ]
+            },
+        ],
+        'pk_itens': ['PK-09', 'PK-10'],
+    },
 }
