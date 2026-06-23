@@ -606,7 +606,7 @@ def api_dashboard():
     return jsonify({
         'total': total,
         'total_geral': total_geral,
-        'por_resultado': {r['resultado']: r['qtd'] for r in por_resultado},
+        'por_resultado': {(r['resultado'] or 'PENDENTE'): r['qtd'] for r in por_resultado},
         'por_tipo': [{'tipo': r['tipo'], 'qtd': r['qtd']} for r in por_tipo],
         'recentes': [dict(r) for r in recentes],
         'lotes_avaliados': lotes_avaliados,

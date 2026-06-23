@@ -9,6 +9,12 @@
         <button class="btn-zoom" id="btn-zoom-out" title="Afastar">－</button>
         <button class="btn-zoom" id="btn-zoom-reset" title="Redefinir">⊡</button>
       </div>
+      <div id="svg-viewport">
+        <div id="svg-container">
+          <p class="carregando-mapa">Carregando mapa…</p>
+        </div>
+      </div>
+      <!-- Toolbar DEPOIS do viewport para garantir z-index correto -->
       <div class="mapa-toolbar-bottom">
         <button class="btn-anotar-mapa" id="btn-anotar" title="Ativar: clique em qualquer ponto de uma rua para registrar dano">
           &#128204; Anotar Dano
@@ -16,11 +22,6 @@
         <a class="btn-relatorio-danos" href="/api/mapa/anotacoes/pdf" target="_blank" title="Relatório PDF com todos os danos registrados">
           &#128196; Relatório de Danos
         </a>
-      </div>
-      <div id="svg-viewport">
-        <div id="svg-container">
-          <p class="carregando-mapa">Carregando mapa…</p>
-        </div>
       </div>
     {% else %}
       <div class="sem-mapa">
