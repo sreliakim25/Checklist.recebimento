@@ -204,9 +204,11 @@ button { font-family: inherit; }
 
 .item-fotos { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .fotos-container { display: flex; flex-wrap: wrap; gap: 6px; }
-.foto-wrap { position: relative; }
+.foto-wrap { position: relative; display: inline-flex; flex-direction: column; align-items: center; gap: 3px; vertical-align: top; }
 .miniatura-foto { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1.5px solid #E5E7EB; cursor: pointer; }
 .btn-del-foto { position: absolute; top: -6px; right: -6px; background: #ef4444; color: #fff; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.foto-legenda { width: 64px; font-size: 10px; border: 1px solid #E5E7EB; border-radius: 4px; padding: 2px 4px; color: #374151; background: #F9FAFB; text-align: center; outline: none; }
+.foto-legenda:focus { border-color: #5C1A2E; background: #fff; }
 
 .btn-foto { background: none; border: 1.5px solid #5C1A2E; color: #5C1A2E; padding: 7px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; }
 .btn-foto:hover { background: #fdf0f3; }

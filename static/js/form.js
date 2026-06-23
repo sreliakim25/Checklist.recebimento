@@ -130,7 +130,7 @@ async function renderizarFormulario(tipo) {
   }
 
   // Fotos gerais (sem item vinculado)
-  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho));
+  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho, f.legenda));
 }
 
 function criarItemEl(item, fotos) {
@@ -143,6 +143,9 @@ function criarItemEl(item, fotos) {
     <div class="foto-wrap" id="foto-${f.id}">
       <img src="/fotos/${f.caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
       <button class="btn-del-foto" onclick="deletarFoto(${f.id})">×</button>
+      <input class="foto-legenda" type="text" placeholder="Legenda…"
+        value="${(f.legenda||'').replace(/"/g,'&quot;')}"
+        oninput="salvarLegenda(${f.id}, this.value)">
     </div>`).join('');
 
   div.innerHTML = `
@@ -216,7 +219,7 @@ async function carregarChecklistExistente(cid) {
   }
 
   // Fotos gerais (sem item vinculado)
-  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho));
+  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho, f.legenda));
 
   atualizarProgressBar();
 }
@@ -279,7 +282,9 @@ function abrirCamera(checklistId, itemId) {
       wrap.id = `foto-${data.foto_id}`;
       wrap.innerHTML = `
         <img src="/fotos/${data.caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
-        <button class="btn-del-foto" onclick="deletarFoto(${data.foto_id})">×</button>`;
+        <button class="btn-del-foto" onclick="deletarFoto(${data.foto_id})">×</button>
+        <input class="foto-legenda" type="text" placeholder="Legenda…"
+          oninput="salvarLegenda(${data.foto_id}, this.value)">`;
       container.appendChild(wrap);
     }
   };
@@ -345,13 +350,13 @@ function abrirCameraGeral() {
     const resp = await fetch('/api/foto/upload', { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.foto_id) {
-      adicionarMiniaturaGeral(data.foto_id, data.caminho);
+      adicionarMiniaturaGeral(data.foto_id, data.caminho, '');
     }
   };
   input.click();
 }
 
-function adicionarMiniaturaGeral(fotoId, caminho) {
+function adicionarMiniaturaGeral(fotoId, caminho, legenda) {
   const container = document.getElementById('fotos-gerais-container');
   if (!container) return;
   const wrap = document.createElement('div');
@@ -359,7 +364,10 @@ function adicionarMiniaturaGeral(fotoId, caminho) {
   wrap.id = `foto-geral-${fotoId}`;
   wrap.innerHTML = `
     <img src="/fotos/${caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
-    <button class="btn-del-foto" onclick="deletarFotoGeral(${fotoId})">×</button>`;
+    <button class="btn-del-foto" onclick="deletarFotoGeral(${fotoId})">×</button>
+    <input class="foto-legenda" type="text" placeholder="Legenda…"
+      value="${(legenda||'').replace(/"/g,'&quot;')}"
+      oninput="salvarLegenda(${fotoId}, this.value)">`;
   container.appendChild(wrap);
 }
 
@@ -367,4 +375,16 @@ async function deletarFotoGeral(fotoId) {
   await fetch(`/api/foto/${fotoId}`, { method: 'DELETE' });
   const el = document.getElementById(`foto-geral-${fotoId}`);
   if (el) el.remove();
+}
+
+const _legendaTimers = {};
+function salvarLegenda(fotoId, valor) {
+  clearTimeout(_legendaTimers[fotoId]);
+  _legendaTimers[fotoId] = setTimeout(() => {
+    fetch(`/api/foto/${fotoId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ legenda: valor })
+    });
+  }, 600);
 }

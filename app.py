@@ -334,17 +334,29 @@ def api_upload_foto():
         os.makedirs(pasta, exist_ok=True)
         file.save(os.path.join(pasta, nome))
 
+    legenda = request.form.get('legenda', '')
+
     with get_db() as conn:
         cur = conn.execute(
-            'INSERT INTO fotos (checklist_id, item_id, caminho) VALUES (?,?,?)',
-            (checklist_id, item_id or None, caminho_rel))
+            'INSERT INTO fotos (checklist_id, item_id, caminho, legenda) VALUES (?,?,?,?)',
+            (checklist_id, item_id or None, caminho_rel, legenda or None))
         foto_id = cur.lastrowid
 
     return jsonify({'foto_id': foto_id, 'caminho': caminho_rel})
 
 
-@app.route('/api/foto/<int:foto_id>', methods=['DELETE'])
-def api_delete_foto(foto_id):
+@app.route('/api/foto/<int:foto_id>', methods=['PUT', 'DELETE'])
+def api_foto_id(foto_id):
+    if request.method == 'PUT':
+        data = request.json or {}
+        legenda = data.get('legenda', '')
+        with get_db() as conn:
+            conn.execute('UPDATE fotos SET legenda=? WHERE id=?', (legenda or None, foto_id))
+        return jsonify({'status': 'updated'})
+    return _api_delete_foto(foto_id)
+
+
+def _api_delete_foto(foto_id):
     with get_db() as conn:
         row = conn.execute('SELECT caminho FROM fotos WHERE id=?', (foto_id,)).fetchone()
         if row:

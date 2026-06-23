@@ -184,9 +184,8 @@ def _miniaturas_inline(fts, fotos_dir='fotos'):
         cap_row = []
         for caminho, f in grupo:
             img_row.append(Image(caminho, width=THUMB_W, height=THUMB_H))
-            # caption com número sequencial baseado no nome do arquivo
-            nome = os.path.basename(f['caminho'])
-            cap_row.append(Paragraph(nome[:28], _estilos(None)['caption']))
+            caption = f.get('legenda') or os.path.basename(f['caminho'])
+            cap_row.append(Paragraph(caption[:40], _estilos(None)['caption']))
 
         pad = THUMB_COLS - len(grupo)
         img_row += [''] * pad
