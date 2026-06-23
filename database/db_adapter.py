@@ -119,7 +119,15 @@ class _PgCursor:
         row = self._cur.fetchone()
         if row is None:
             return None
-        return dict(row)
+        d = dict(row)
+
+        class _R(dict):
+            def __getitem__(self_, key):
+                if isinstance(key, int):
+                    return list(self_.values())[key]
+                return super().__getitem__(key)
+
+        return _R(d)
 
     def fetchall(self):
         rows = self._cur.fetchall()
