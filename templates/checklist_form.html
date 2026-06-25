@@ -112,6 +112,16 @@
 
 </div>
 
+<!-- Lightbox de fotos -->
+<div id="lightbox" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:9999; align-items:center; justify-content:center; flex-direction:column;" onclick="fecharLightboxSeFundo(event)">
+  <button onclick="fecharLightbox()" style="position:absolute; top:14px; right:18px; background:rgba(255,255,255,0.15); border:none; color:#fff; font-size:24px; cursor:pointer; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; line-height:1;">×</button>
+  <img id="lightbox-img" src="" alt="" style="max-width:90vw; max-height:78vh; border-radius:8px; object-fit:contain; box-shadow:0 8px 32px rgba(0,0,0,0.5);">
+  <div style="margin-top:14px; display:flex; gap:12px;">
+    <button onclick="deletarViaLightbox()" style="background:#ef4444; color:#fff; border:none; border-radius:6px; padding:9px 22px; cursor:pointer; font-size:14px; font-weight:600;">🗑 Remover foto</button>
+    <button onclick="fecharLightbox()" style="background:#6B7280; color:#fff; border:none; border-radius:6px; padding:9px 22px; cursor:pointer; font-size:14px;">Fechar</button>
+  </div>
+</div>
+
 <script>
   const TIPO_INICIAL = "{{ tipo }}";
   const QUADRA_INICIAL = "{{ quadra }}";

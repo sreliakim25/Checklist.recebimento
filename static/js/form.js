@@ -2,6 +2,40 @@ let CHECKLIST_ID = null;
 let SCHEMA_ATUAL = null;
 const saveQueue = {};
 
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+let _lbFotoId = null;
+let _lbElId = null;
+
+function abrirLightbox(src, fotoId, elId) {
+  _lbFotoId = fotoId;
+  _lbElId = elId;
+  document.getElementById('lightbox-img').src = src;
+  const lb = document.getElementById('lightbox');
+  lb.style.display = 'flex';
+}
+
+function fecharLightbox() {
+  document.getElementById('lightbox').style.display = 'none';
+  _lbFotoId = null;
+  _lbElId = null;
+}
+
+function fecharLightboxSeFundo(e) {
+  if (e.target === document.getElementById('lightbox')) fecharLightbox();
+}
+
+async function deletarViaLightbox() {
+  if (!_lbFotoId) return;
+  await fetch(`/api/foto/${_lbFotoId}`, { method: 'DELETE' });
+  const el = document.getElementById(_lbElId);
+  if (el) el.remove();
+  fecharLightbox();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') fecharLightbox();
+});
+
 document.addEventListener('DOMContentLoaded', async function () {
   // Pré-preencher tipo e localizadores vindos da URL ou do template
   if (TIPO_INICIAL) {
@@ -141,7 +175,7 @@ function criarItemEl(item, fotos) {
 
   let fotosHtml = fotos.map(f => `
     <div class="foto-wrap" id="foto-${f.id}">
-      <img src="/fotos/${f.caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
+      <img src="/fotos/${f.caminho}" class="miniatura-foto" onclick="abrirLightbox(this.src,${f.id},'foto-${f.id}')">
       <button class="btn-del-foto" onclick="deletarFoto(${f.id})">×</button>
       <input class="foto-legenda" type="text" placeholder="Legenda…"
         value="${(f.legenda||'').replace(/"/g,'&quot;')}"
@@ -281,7 +315,7 @@ function abrirCamera(checklistId, itemId) {
       wrap.className = 'foto-wrap';
       wrap.id = `foto-${data.foto_id}`;
       wrap.innerHTML = `
-        <img src="/fotos/${data.caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
+        <img src="/fotos/${data.caminho}" class="miniatura-foto" onclick="abrirLightbox(this.src,${data.foto_id},'foto-${data.foto_id}')">
         <button class="btn-del-foto" onclick="deletarFoto(${data.foto_id})">×</button>
         <input class="foto-legenda" type="text" placeholder="Legenda…"
           oninput="salvarLegenda(${data.foto_id}, this.value)">`;
@@ -363,7 +397,7 @@ function adicionarMiniaturaGeral(fotoId, caminho, legenda) {
   wrap.className = 'foto-wrap';
   wrap.id = `foto-geral-${fotoId}`;
   wrap.innerHTML = `
-    <img src="/fotos/${caminho}" class="miniatura-foto" onclick="window.open(this.src,'_blank')">
+    <img src="/fotos/${caminho}" class="miniatura-foto" onclick="abrirLightbox(this.src,${fotoId},'foto-geral-${fotoId}')">
     <button class="btn-del-foto" onclick="deletarFotoGeral(${fotoId})">×</button>
     <input class="foto-legenda" type="text" placeholder="Legenda…"
       value="${(legenda||'').replace(/"/g,'&quot;')}"

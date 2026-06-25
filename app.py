@@ -637,7 +637,11 @@ def api_pdf(cid):
         fotos = conn.execute(
             'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
 
-    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], [dict(f) for f in fotos], get_config(), FOTOS_DIR)
+    fotos_data = [dict(f) for f in fotos]
+    if _USE_SUPABASE_STORAGE:
+        for f in fotos_data:
+            f['caminho'] = _storage_public_url(f['caminho'])
+    pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], fotos_data, get_config(), FOTOS_DIR)
     tipo = c['tipo']
     quad = c['quadra'] or ''
     lot = c['lote'] or ''
