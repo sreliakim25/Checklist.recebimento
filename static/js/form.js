@@ -2,6 +2,31 @@ let CHECKLIST_ID = null;
 let SCHEMA_ATUAL = null;
 const saveQueue = {};
 
+// ── Compressão de imagem (client-side) ───────────────────────────────────────
+function _comprimirImagem(file, maxPx = 1200, quality = 0.75) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxPx) { h = Math.round(h * maxPx / w); w = maxPx; }
+        if (h > maxPx) { w = Math.round(w * maxPx / h); h = maxPx; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        canvas.toBlob(blob => {
+          const r2 = new FileReader();
+          r2.onload = e2 => resolve(e2.target.result.split(',')[1]); // só base64
+          r2.readAsDataURL(blob);
+        }, 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 let _lbFotoId = null;
 let _lbElId = null;
@@ -306,20 +331,23 @@ function abrirCamera(checklistId, itemId) {
   input.onchange = async function () {
     const file = this.files[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('checklist_id', checklistId);
-    fd.append('item_id', itemId);
-    const resp = await fetch('/api/foto/upload', { method: 'POST', body: fd });
+
+    const b64 = await _comprimirImagem(file);
+    const dataUrl = `data:image/jpeg;base64,${b64}`;
+
+    const resp = await fetch('/api/foto/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ checklist_id: checklistId, item_id: itemId, dados_base64: b64 })
+    });
     const data = await resp.json();
     if (data.foto_id) {
       const container = document.getElementById(`fotos-${itemId}`);
       const wrap = document.createElement('div');
       wrap.className = 'foto-wrap';
       wrap.id = `foto-${data.foto_id}`;
-      const fotoSrc = data.url || `/fotos/${data.caminho}`;
       wrap.innerHTML = `
-        <img src="${fotoSrc}" class="miniatura-foto" onclick="abrirLightbox(this.src,${data.foto_id},'foto-${data.foto_id}')">
+        <img src="${dataUrl}" class="miniatura-foto" onclick="abrirLightbox(this.src,${data.foto_id},'foto-${data.foto_id}')">
         <button class="btn-del-foto" onclick="deletarFoto(${data.foto_id})">×</button>
         <input class="foto-legenda" type="text" placeholder="Legenda…"
           oninput="salvarLegenda(${data.foto_id}, this.value)">`;
@@ -381,14 +409,18 @@ function abrirCameraGeral() {
   input.onchange = async function () {
     const file = this.files[0];
     if (!file) return;
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('checklist_id', CHECKLIST_ID);
-    // sem item_id → foto geral das observações
-    const resp = await fetch('/api/foto/upload', { method: 'POST', body: fd });
+
+    const b64 = await _comprimirImagem(file);
+    const dataUrl = `data:image/jpeg;base64,${b64}`;
+
+    const resp = await fetch('/api/foto/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ checklist_id: CHECKLIST_ID, dados_base64: b64 })
+    });
     const data = await resp.json();
     if (data.foto_id) {
-      adicionarMiniaturaGeral(data.foto_id, data.caminho, '', data.url);
+      adicionarMiniaturaGeral(data.foto_id, data.caminho, '', dataUrl);
     }
   };
   input.click();

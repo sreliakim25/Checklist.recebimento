@@ -151,9 +151,17 @@ def _legenda(estilos):
     return tbl
 
 
-def _resolve_foto(caminho, fotos_dir):
-    """Retorna um path local (str) ou BytesIO para uso com reportlab Image.
-    Suporta URLs (Supabase Storage) e caminhos locais."""
+def _resolve_foto(caminho, fotos_dir, dados=None):
+    """Retorna BytesIO ou path local para uso com reportlab Image.
+    Prioriza dados base64 (armazenado no banco), depois URL/arquivo."""
+    if dados:
+        try:
+            import base64 as _b64
+            return io.BytesIO(_b64.b64decode(dados))
+        except Exception:
+            pass
+    if not caminho:
+        return None
     if caminho.startswith('http://') or caminho.startswith('https://'):
         import urllib.request
         try:
@@ -169,7 +177,7 @@ def _miniaturas_inline(fts, fotos_dir='fotos'):
     """Linha(s) de miniaturas (5cm) com caption, até THUMB_COLS por linha."""
     imgs_validas = []
     for f in fts:
-        src = _resolve_foto(f['caminho'], fotos_dir)
+        src = _resolve_foto(f['caminho'], fotos_dir, f.get('dados'))
         if src is not None:
             imgs_validas.append((src, f))
 
@@ -283,12 +291,12 @@ def _registro_fotografico(itens_ordenados, fotos_por_item, fotos_gerais, estilos
     for item in itens_ordenados:
         fts = fotos_por_item.get(item['id'], [])
         for f in fts:
-            src = _resolve_foto(f['caminho'], fotos_dir)
+            src = _resolve_foto(f['caminho'], fotos_dir, f.get('dados'))
             if src is not None:
                 entradas.append((src, item, f))
 
     for f in fotos_gerais:
-        src = _resolve_foto(f['caminho'], fotos_dir)
+        src = _resolve_foto(f['caminho'], fotos_dir, f.get('dados'))
         if src is not None:
             entradas.append((src, None, f))
 

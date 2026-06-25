@@ -279,7 +279,14 @@ def _api_get_checklist(cid):
             'SELECT * FROM checklist_itens WHERE checklist_id=? ORDER BY id', (cid,)).fetchall()
         fotos = conn.execute(
             'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
-    fotos_out = [{**dict(f), 'url': _foto_url(f['caminho'])} for f in fotos]
+    fotos_out = []
+    for f in fotos:
+        fd = dict(f)
+        if fd.get('dados'):
+            fd['url'] = f"data:image/jpeg;base64,{fd['dados']}"
+        else:
+            fd['url'] = _foto_url(fd['caminho'])
+        fotos_out.append(fd)
     return jsonify({
         'checklist': dict(c),
         'itens': [dict(i) for i in itens],
@@ -338,32 +345,60 @@ def api_finalizar(cid):
 
 @app.route('/api/foto/upload', methods=['POST'])
 def api_upload_foto():
-    checklist_id = request.form.get('checklist_id')
-    item_id = request.form.get('item_id')
-    file = request.files.get('file')
-    if not file or not checklist_id:
-        return jsonify({'erro': 'Arquivo ou checklist_id ausente'}), 400
+    import base64 as _b64
 
-    ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
-    nome = f"{item_id or 'geral'}_{ts}.jpg"
-    caminho_rel = f"{checklist_id}/{nome}"
-
-    if _USE_SUPABASE_STORAGE:
-        _storage_upload(caminho_rel, file.read(), file.content_type or 'image/jpeg')
+    # Aceita JSON com base64 (novo padrão) ou multipart (legado)
+    if request.is_json:
+        data = request.json or {}
+        checklist_id = str(data.get('checklist_id', ''))
+        item_id = data.get('item_id')
+        dados_b64 = data.get('dados_base64', '')
+        legenda = data.get('legenda', '')
+        if not checklist_id or not dados_b64:
+            return jsonify({'erro': 'checklist_id e dados_base64 obrigatórios'}), 400
+        caminho_rel = ''
+        # Tenta Supabase Storage em paralelo (best-effort, não bloqueia)
+        if _USE_SUPABASE_STORAGE:
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
+            nome = f"{item_id or 'geral'}_{ts}.jpg"
+            caminho_rel = f"{checklist_id}/{nome}"
+            try:
+                _storage_upload(caminho_rel, _b64.b64decode(dados_b64), 'image/jpeg')
+            except Exception as e:
+                print(f'[storage] upload falhou (ignorado): {e}')
+                caminho_rel = ''
     else:
-        pasta = os.path.join(FOTOS_DIR, str(checklist_id))
-        os.makedirs(pasta, exist_ok=True)
-        file.save(os.path.join(pasta, nome))
-
-    legenda = request.form.get('legenda', '')
+        checklist_id = request.form.get('checklist_id')
+        item_id = request.form.get('item_id')
+        file = request.files.get('file')
+        if not file or not checklist_id:
+            return jsonify({'erro': 'Arquivo ou checklist_id ausente'}), 400
+        file_bytes = file.read()
+        dados_b64 = _b64.b64encode(file_bytes).decode('utf-8')
+        legenda = request.form.get('legenda', '')
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S_%f')[:19]
+        nome = f"{item_id or 'geral'}_{ts}.jpg"
+        caminho_rel = f"{checklist_id}/{nome}"
+        if _USE_SUPABASE_STORAGE:
+            try:
+                _storage_upload(caminho_rel, file_bytes, file.content_type or 'image/jpeg')
+            except Exception as e:
+                print(f'[storage] upload falhou (ignorado): {e}')
+                caminho_rel = ''
+        else:
+            pasta = os.path.join(FOTOS_DIR, str(checklist_id))
+            os.makedirs(pasta, exist_ok=True)
+            with open(os.path.join(pasta, nome), 'wb') as fh:
+                fh.write(file_bytes)
 
     with get_db() as conn:
         cur = conn.execute(
-            'INSERT INTO fotos (checklist_id, item_id, caminho, legenda) VALUES (?,?,?,?)',
-            (checklist_id, item_id or None, caminho_rel, legenda or None))
+            'INSERT INTO fotos (checklist_id, item_id, caminho, legenda, dados) VALUES (?,?,?,?,?)',
+            (checklist_id, item_id or None, caminho_rel, legenda or None, dados_b64 or None))
         foto_id = cur.lastrowid
 
-    return jsonify({'foto_id': foto_id, 'caminho': caminho_rel, 'url': _foto_url(caminho_rel)})
+    url = f'data:image/jpeg;base64,{dados_b64}' if dados_b64 else _foto_url(caminho_rel)
+    return jsonify({'foto_id': foto_id, 'caminho': caminho_rel, 'url': url})
 
 
 @app.route('/api/foto/<int:foto_id>', methods=['PUT', 'DELETE'])
@@ -658,10 +693,13 @@ def api_pdf(cid):
         fotos = conn.execute(
             'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
 
-    fotos_data = [dict(f) for f in fotos]
-    if _USE_SUPABASE_STORAGE:
-        for f in fotos_data:
-            f['caminho'] = _storage_public_url(f['caminho'])
+    fotos_data = []
+    for f in fotos:
+        fd = dict(f)
+        # Se não tem base64 e usa Supabase, converte caminho para URL pública
+        if not fd.get('dados') and fd.get('caminho') and _USE_SUPABASE_STORAGE:
+            fd['caminho'] = _storage_public_url(fd['caminho'])
+        fotos_data.append(fd)
     pdf_bytes = gerar_pdf(dict(c), [dict(i) for i in itens], fotos_data, get_config(), FOTOS_DIR)
     tipo = c['tipo']
     quad = c['quadra'] or ''

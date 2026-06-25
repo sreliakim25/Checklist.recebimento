@@ -183,3 +183,25 @@ def init_db_if_needed():
     with get_db() as conn:
         with open(schema_file) as f:
             conn.executescript(f.read())
+        _migrate(conn)
+
+
+def _migrate(conn):
+    """Aplica migrações incrementais em tabelas já existentes."""
+    if USE_POSTGRES:
+        stmts = [
+            "ALTER TABLE fotos ADD COLUMN IF NOT EXISTS dados TEXT",
+        ]
+        for sql in stmts:
+            try:
+                conn.execute(sql)
+            except Exception as e:
+                print(f'[migration] {e}')
+    else:
+        # SQLite: verifica se a coluna já existe antes de adicionar
+        try:
+            cols = [row[1] for row in conn.execute("PRAGMA table_info(fotos)").fetchall()]
+            if 'dados' not in cols:
+                conn.execute("ALTER TABLE fotos ADD COLUMN dados TEXT")
+        except Exception as e:
+            print(f'[migration] {e}')

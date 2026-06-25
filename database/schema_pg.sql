@@ -38,7 +38,8 @@ CREATE TABLE IF NOT EXISTS fotos (
     id            SERIAL PRIMARY KEY,
     checklist_id  INTEGER NOT NULL REFERENCES checklists(id) ON DELETE CASCADE,
     item_id       INTEGER REFERENCES checklist_itens(id),
-    caminho       TEXT NOT NULL,
+    caminho       TEXT NOT NULL DEFAULT '',
+    dados         TEXT,
     legenda       TEXT,
     capturado_em  TIMESTAMP DEFAULT NOW()
 );
