@@ -164,7 +164,7 @@ async function renderizarFormulario(tipo) {
   }
 
   // Fotos gerais (sem item vinculado)
-  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho, f.legenda));
+  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho, f.legenda, f.url));
 }
 
 function criarItemEl(item, fotos) {
@@ -173,14 +173,17 @@ function criarItemEl(item, fotos) {
   div.className = `checklist-item status-${s.toLowerCase()}`;
   div.id = `item-${item.id}`;
 
-  let fotosHtml = fotos.map(f => `
+  let fotosHtml = fotos.map(f => {
+    const src = f.url || `/fotos/${f.caminho}`;
+    return `
     <div class="foto-wrap" id="foto-${f.id}">
-      <img src="/fotos/${f.caminho}" class="miniatura-foto" onclick="abrirLightbox(this.src,${f.id},'foto-${f.id}')">
+      <img src="${src}" class="miniatura-foto" onclick="abrirLightbox(this.src,${f.id},'foto-${f.id}')">
       <button class="btn-del-foto" onclick="deletarFoto(${f.id})">×</button>
       <input class="foto-legenda" type="text" placeholder="Legenda…"
         value="${(f.legenda||'').replace(/"/g,'&quot;')}"
         oninput="salvarLegenda(${f.id}, this.value)">
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   div.innerHTML = `
     <div class="item-header">
@@ -253,7 +256,7 @@ async function carregarChecklistExistente(cid) {
   }
 
   // Fotos gerais (sem item vinculado)
-  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho, f.legenda));
+  d.fotos.filter(f => !f.item_id).forEach(f => adicionarMiniaturaGeral(f.id, f.caminho, f.legenda, f.url));
 
   atualizarProgressBar();
 }
@@ -314,8 +317,9 @@ function abrirCamera(checklistId, itemId) {
       const wrap = document.createElement('div');
       wrap.className = 'foto-wrap';
       wrap.id = `foto-${data.foto_id}`;
+      const fotoSrc = data.url || `/fotos/${data.caminho}`;
       wrap.innerHTML = `
-        <img src="/fotos/${data.caminho}" class="miniatura-foto" onclick="abrirLightbox(this.src,${data.foto_id},'foto-${data.foto_id}')">
+        <img src="${fotoSrc}" class="miniatura-foto" onclick="abrirLightbox(this.src,${data.foto_id},'foto-${data.foto_id}')">
         <button class="btn-del-foto" onclick="deletarFoto(${data.foto_id})">×</button>
         <input class="foto-legenda" type="text" placeholder="Legenda…"
           oninput="salvarLegenda(${data.foto_id}, this.value)">`;
@@ -384,20 +388,21 @@ function abrirCameraGeral() {
     const resp = await fetch('/api/foto/upload', { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.foto_id) {
-      adicionarMiniaturaGeral(data.foto_id, data.caminho, '');
+      adicionarMiniaturaGeral(data.foto_id, data.caminho, '', data.url);
     }
   };
   input.click();
 }
 
-function adicionarMiniaturaGeral(fotoId, caminho, legenda) {
+function adicionarMiniaturaGeral(fotoId, caminho, legenda, url) {
   const container = document.getElementById('fotos-gerais-container');
   if (!container) return;
+  const src = url || `/fotos/${caminho}`;
   const wrap = document.createElement('div');
   wrap.className = 'foto-wrap';
   wrap.id = `foto-geral-${fotoId}`;
   wrap.innerHTML = `
-    <img src="/fotos/${caminho}" class="miniatura-foto" onclick="abrirLightbox(this.src,${fotoId},'foto-geral-${fotoId}')">
+    <img src="${src}" class="miniatura-foto" onclick="abrirLightbox(this.src,${fotoId},'foto-geral-${fotoId}')">
     <button class="btn-del-foto" onclick="deletarFotoGeral(${fotoId})">×</button>
     <input class="foto-legenda" type="text" placeholder="Legenda…"
       value="${(legenda||'').replace(/"/g,'&quot;')}"

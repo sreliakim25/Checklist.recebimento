@@ -50,20 +50,40 @@ def _storage_public_url(path_in_bucket: str) -> str:
     return f"{_SUPABASE_URL}/storage/v1/object/public/{_STORAGE_BUCKET}/{path_in_bucket}"
 
 
+def _foto_url(caminho: str) -> str:
+    """URL direta para exibição de uma foto (Supabase pública ou rota local)."""
+    if _USE_SUPABASE_STORAGE:
+        return _storage_public_url(caminho)
+    return f'/fotos/{caminho}'
+
+
 def _storage_ensure_bucket():
-    """Cria o bucket 'fotos' se ainda não existir (idempotente)."""
+    """Cria o bucket 'fotos' como público, ou atualiza para público se já existir."""
     import json
-    url = f"{_SUPABASE_URL}/storage/v1/bucket"
     payload = json.dumps({'id': _STORAGE_BUCKET, 'name': _STORAGE_BUCKET, 'public': True}).encode()
-    req = urllib.request.Request(url, data=payload, method='POST')
+
+    url_create = f"{_SUPABASE_URL}/storage/v1/bucket"
+    req = urllib.request.Request(url_create, data=payload, method='POST')
     req.add_header('Authorization', f'Bearer {_SUPABASE_SERVICE_KEY}')
     req.add_header('Content-Type', 'application/json')
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             resp.read()
+        return  # criado com sucesso
     except urllib.error.HTTPError as e:
-        if e.code != 409:  # 409 = bucket already exists
+        if e.code != 409:
             raise
+
+    # 409 = bucket já existe → atualizar para público
+    url_update = f"{_SUPABASE_URL}/storage/v1/bucket/{_STORAGE_BUCKET}"
+    req2 = urllib.request.Request(url_update, data=payload, method='PUT')
+    req2.add_header('Authorization', f'Bearer {_SUPABASE_SERVICE_KEY}')
+    req2.add_header('Content-Type', 'application/json')
+    try:
+        with urllib.request.urlopen(req2, timeout=10) as resp2:
+            resp2.read()
+    except Exception as e:
+        print(f'[storage] aviso ao atualizar bucket: {e}')
 
 
 def get_config():
@@ -259,10 +279,11 @@ def _api_get_checklist(cid):
             'SELECT * FROM checklist_itens WHERE checklist_id=? ORDER BY id', (cid,)).fetchall()
         fotos = conn.execute(
             'SELECT * FROM fotos WHERE checklist_id=?', (cid,)).fetchall()
+    fotos_out = [{**dict(f), 'url': _foto_url(f['caminho'])} for f in fotos]
     return jsonify({
         'checklist': dict(c),
         'itens': [dict(i) for i in itens],
-        'fotos': [dict(f) for f in fotos]
+        'fotos': fotos_out
     })
 
 
@@ -342,7 +363,7 @@ def api_upload_foto():
             (checklist_id, item_id or None, caminho_rel, legenda or None))
         foto_id = cur.lastrowid
 
-    return jsonify({'foto_id': foto_id, 'caminho': caminho_rel})
+    return jsonify({'foto_id': foto_id, 'caminho': caminho_rel, 'url': _foto_url(caminho_rel)})
 
 
 @app.route('/api/foto/<int:foto_id>', methods=['PUT', 'DELETE'])
